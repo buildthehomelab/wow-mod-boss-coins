@@ -1,0 +1,27 @@
+[worldserver]
+
+########################################
+# mod-boss-coins
+#
+# Tarnished Undermine Reals: coins from dungeon and raid bosses, spent at Pix Xizzix in Booty Bay.
+# Which bosses give coins, and how many, is the world table mod_boss_coins_source.
+########################################
+
+#
+#    BossCoins.Enable
+#        Description: Master switch. With 0 no boss gives coins. Pix Xizzix, her stock and the
+#                     coins players already have are rows in the databases and stay: she keeps
+#                     trading. Remove those with the module's uninstall SQL.
+#        Default:     1
+#
+
+BossCoins.Enable = 1
+
+#
+#    BossCoins.MinBossLevel
+#        Description: A boss below this level gives no coins, whatever the table says. It keeps
+#                     the first bosses of Blackrock Depths out. Raid bosses are level 63.
+#        Default:     55
+#
+
+BossCoins.MinBossLevel = 55

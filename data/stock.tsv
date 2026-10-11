@@ -1,0 +1,189 @@
+page	item	coins	class	name
+dungeon	16731	50	warrior	Helm of Valor
+dungeon	16733	25	warrior	Spaulders of Valor
+dungeon	16730	50	warrior	Breastplate of Valor
+dungeon	16735	15	warrior	Bracers of Valor
+dungeon	16737	25	warrior	Gauntlets of Valor
+dungeon	16736	25	warrior	Belt of Valor
+dungeon	16732	50	warrior	Legplates of Valor
+dungeon	16734	25	warrior	Boots of Valor
+dungeon	16727	50	paladin	Lightforge Helm
+dungeon	16729	25	paladin	Lightforge Spaulders
+dungeon	16726	50	paladin	Lightforge Breastplate
+dungeon	16722	15	paladin	Lightforge Bracers
+dungeon	16724	25	paladin	Lightforge Gauntlets
+dungeon	16723	25	paladin	Lightforge Belt
+dungeon	16728	50	paladin	Lightforge Legplates
+dungeon	16725	25	paladin	Lightforge Boots
+dungeon	16677	50	hunter	Beaststalker's Cap
+dungeon	16679	25	hunter	Beaststalker's Mantle
+dungeon	16674	50	hunter	Beaststalker's Tunic
+dungeon	16681	15	hunter	Beaststalker's Bindings
+dungeon	16676	25	hunter	Beaststalker's Gloves
+dungeon	16680	25	hunter	Beaststalker's Belt
+dungeon	16678	50	hunter	Beaststalker's Pants
+dungeon	16675	25	hunter	Beaststalker's Boots
+dungeon	16707	50	rogue	Shadowcraft Cap
+dungeon	16708	25	rogue	Shadowcraft Spaulders
+dungeon	16721	50	rogue	Shadowcraft Tunic
+dungeon	16710	15	rogue	Shadowcraft Bracers
+dungeon	16712	25	rogue	Shadowcraft Gloves
+dungeon	16713	25	rogue	Shadowcraft Belt
+dungeon	16709	50	rogue	Shadowcraft Pants
+dungeon	16711	25	rogue	Shadowcraft Boots
+dungeon	16693	50	priest	Devout Crown
+dungeon	16695	25	priest	Devout Mantle
+dungeon	16690	50	priest	Devout Robe
+dungeon	16697	15	priest	Devout Bracers
+dungeon	16692	25	priest	Devout Gloves
+dungeon	16696	25	priest	Devout Belt
+dungeon	16694	50	priest	Devout Skirt
+dungeon	16691	25	priest	Devout Sandals
+dungeon	16667	50	shaman	Coif of Elements
+dungeon	16669	25	shaman	Pauldrons of Elements
+dungeon	16666	50	shaman	Vest of Elements
+dungeon	16671	15	shaman	Bindings of Elements
+dungeon	16672	25	shaman	Gauntlets of Elements
+dungeon	16673	25	shaman	Cord of Elements
+dungeon	16668	50	shaman	Kilt of Elements
+dungeon	16670	25	shaman	Boots of Elements
+dungeon	16686	50	mage	Magister's Crown
+dungeon	16689	25	mage	Magister's Mantle
+dungeon	16688	50	mage	Magister's Robes
+dungeon	16683	15	mage	Magister's Bindings
+dungeon	16684	25	mage	Magister's Gloves
+dungeon	16685	25	mage	Magister's Belt
+dungeon	16687	50	mage	Magister's Leggings
+dungeon	16682	25	mage	Magister's Boots
+dungeon	16698	50	warlock	Dreadmist Mask
+dungeon	16701	25	warlock	Dreadmist Mantle
+dungeon	16700	50	warlock	Dreadmist Robe
+dungeon	16703	15	warlock	Dreadmist Bracers
+dungeon	16705	25	warlock	Dreadmist Wraps
+dungeon	16702	25	warlock	Dreadmist Belt
+dungeon	16699	50	warlock	Dreadmist Leggings
+dungeon	16704	25	warlock	Dreadmist Sandals
+dungeon	16720	50	druid	Wildheart Cowl
+dungeon	16718	25	druid	Wildheart Spaulders
+dungeon	16706	50	druid	Wildheart Vest
+dungeon	16714	15	druid	Wildheart Bracers
+dungeon	16717	25	druid	Wildheart Gloves
+dungeon	16716	25	druid	Wildheart Belt
+dungeon	16719	50	druid	Wildheart Kilt
+dungeon	16715	25	druid	Wildheart Boots
+tier1	16866	25	warrior	Helm of Might
+tier1	16868	20	warrior	Pauldrons of Might
+tier1	16865	25	warrior	Breastplate of Might
+tier1	16861	15	warrior	Bracers of Might
+tier1	16863	15	warrior	Gauntlets of Might
+tier1	16864	15	warrior	Belt of Might
+tier1	16867	25	warrior	Legplates of Might
+tier1	16862	20	warrior	Sabatons of Might
+tier1	16854	25	paladin	Lawbringer Helm
+tier1	16856	20	paladin	Lawbringer Spaulders
+tier1	16853	25	paladin	Lawbringer Chestguard
+tier1	16857	15	paladin	Lawbringer Bracers
+tier1	16860	15	paladin	Lawbringer Gauntlets
+tier1	16858	15	paladin	Lawbringer Belt
+tier1	16855	25	paladin	Lawbringer Legplates
+tier1	16859	20	paladin	Lawbringer Boots
+tier1	16846	25	hunter	Giantstalker's Helmet
+tier1	16848	20	hunter	Giantstalker's Epaulets
+tier1	16845	25	hunter	Giantstalker's Breastplate
+tier1	16850	15	hunter	Giantstalker's Bracers
+tier1	16852	15	hunter	Giantstalker's Gloves
+tier1	16851	15	hunter	Giantstalker's Belt
+tier1	16847	25	hunter	Giantstalker's Leggings
+tier1	16849	20	hunter	Giantstalker's Boots
+tier1	16821	25	rogue	Nightslayer Cover
+tier1	16823	20	rogue	Nightslayer Shoulder Pads
+tier1	16820	25	rogue	Nightslayer Chestpiece
+tier1	16825	15	rogue	Nightslayer Bracelets
+tier1	16826	15	rogue	Nightslayer Gloves
+tier1	16827	15	rogue	Nightslayer Belt
+tier1	16822	25	rogue	Nightslayer Pants
+tier1	16824	20	rogue	Nightslayer Boots
+tier1	16813	25	priest	Circlet of Prophecy
+tier1	16816	20	priest	Mantle of Prophecy
+tier1	16815	25	priest	Robes of Prophecy
+tier1	16819	15	priest	Vambraces of Prophecy
+tier1	16812	15	priest	Gloves of Prophecy
+tier1	16817	15	priest	Girdle of Prophecy
+tier1	16814	25	priest	Pants of Prophecy
+tier1	16811	20	priest	Boots of Prophecy
+tier1	16842	25	shaman	Earthfury Helmet
+tier1	16844	20	shaman	Earthfury Epaulets
+tier1	16841	25	shaman	Earthfury Vestments
+tier1	16840	15	shaman	Earthfury Bracers
+tier1	16839	15	shaman	Earthfury Gauntlets
+tier1	16838	15	shaman	Earthfury Belt
+tier1	16843	25	shaman	Earthfury Legguards
+tier1	16837	20	shaman	Earthfury Boots
+tier1	16795	25	mage	Arcanist Crown
+tier1	16797	20	mage	Arcanist Mantle
+tier1	16798	25	mage	Arcanist Robes
+tier1	16799	15	mage	Arcanist Bindings
+tier1	16801	15	mage	Arcanist Gloves
+tier1	16802	15	mage	Arcanist Belt
+tier1	16796	25	mage	Arcanist Leggings
+tier1	16800	20	mage	Arcanist Boots
+tier1	16808	25	warlock	Felheart Horns
+tier1	16807	20	warlock	Felheart Shoulder Pads
+tier1	16809	25	warlock	Felheart Robes
+tier1	16804	15	warlock	Felheart Bracers
+tier1	16805	15	warlock	Felheart Gloves
+tier1	16806	15	warlock	Felheart Belt
+tier1	16810	25	warlock	Felheart Pants
+tier1	16803	20	warlock	Felheart Slippers
+tier1	16834	25	druid	Cenarion Helm
+tier1	16836	20	druid	Cenarion Spaulders
+tier1	16833	25	druid	Cenarion Vestments
+tier1	16830	15	druid	Cenarion Bracers
+tier1	16831	15	druid	Cenarion Gloves
+tier1	16828	15	druid	Cenarion Belt
+tier1	16835	25	druid	Cenarion Leggings
+tier1	16829	20	druid	Cenarion Boots
+tier2	16959	35	warrior	Bracelets of Wrath
+tier2	16964	35	warrior	Gauntlets of Wrath
+tier2	16960	35	warrior	Waistband of Wrath
+tier2	16965	35	warrior	Sabatons of Wrath
+tier2	16951	35	paladin	Judgement Bindings
+tier2	16956	35	paladin	Judgement Gauntlets
+tier2	16952	35	paladin	Judgement Belt
+tier2	16957	35	paladin	Judgement Sabatons
+tier2	16935	35	hunter	Dragonstalker's Bracers
+tier2	16940	35	hunter	Dragonstalker's Gauntlets
+tier2	16936	35	hunter	Dragonstalker's Belt
+tier2	16941	35	hunter	Dragonstalker's Greaves
+tier2	16911	35	rogue	Bloodfang Bracers
+tier2	16907	35	rogue	Bloodfang Gloves
+tier2	16910	35	rogue	Bloodfang Belt
+tier2	16906	35	rogue	Bloodfang Boots
+tier2	16926	35	priest	Bindings of Transcendence
+tier2	16920	35	priest	Handguards of Transcendence
+tier2	16925	35	priest	Belt of Transcendence
+tier2	16919	35	priest	Boots of Transcendence
+tier2	16943	35	shaman	Bracers of Ten Storms
+tier2	16948	35	shaman	Gauntlets of Ten Storms
+tier2	16944	35	shaman	Belt of Ten Storms
+tier2	16949	35	shaman	Greaves of Ten Storms
+tier2	16918	35	mage	Netherwind Bindings
+tier2	16913	35	mage	Netherwind Gloves
+tier2	16818	35	mage	Netherwind Belt
+tier2	16912	35	mage	Netherwind Boots
+tier2	16934	35	warlock	Nemesis Bracers
+tier2	16928	35	warlock	Nemesis Gloves
+tier2	16933	35	warlock	Nemesis Belt
+tier2	16927	35	warlock	Nemesis Boots
+tier2	16904	35	druid	Stormrage Bracers
+tier2	16899	35	druid	Stormrage Handguards
+tier2	16903	35	druid	Stormrage Belt
+tier2	16898	35	druid	Stormrage Boots
+supplies	17012	10		Core Leather
+supplies	17011	15		Lava Core
+supplies	17010	15		Fiery Core
+supplies	13521	50		Recipe: Flask of Supreme Power
+supplies	13519	50		Recipe: Flask of the Titans
+supplies	13520	50		Recipe: Flask of Distilled Wisdom
+supplies	13522	50		Recipe: Flask of Chromatic Resistance
+supplies	13518	50		Recipe: Potion of Petrification
