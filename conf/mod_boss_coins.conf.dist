@@ -19,8 +19,10 @@ BossCoins.Enable = 1
 
 #
 #    BossCoins.MinBossLevel
-#        Description: A boss below this level gives no coins, whatever the table says. It keeps
-#                     the first bosses of Blackrock Depths out. Raid bosses are level 63.
+#        Description: A boss below this level gives no coins when its instance has a row for
+#                     the whole map in mod_boss_coins_source. It keeps the first bosses of
+#                     Blackrock Depths out. A boss with a row of its own pays whatever its
+#                     level. Raid bosses are level 63.
 #        Default:     55
 #
 

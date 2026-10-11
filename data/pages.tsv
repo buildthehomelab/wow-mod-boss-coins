@@ -1,5 +1,9 @@
-page	vendor	phase	option	holds
-dungeon	9503201	0	Show me the dungeon sets.	the Dungeon Set 1 pieces
-tier1	9503202	1	Show me what came out of the Molten Core.	the Tier 1 pieces
-tier2	9503203	3	Show me what came out of Blackwing Lair.	the Tier 2 bracers, gloves, belts and boots
-supplies	9503204	1	What else have you got?	Molten Core crafting materials and the flask recipes
+page	vendor	phase	achievement	option	holds
+dungeon	9503201	0	0	Show me the dungeon sets.	the Dungeon Set 1 pieces
+tier1	9503202	1	0	Show me what came out of the Molten Core.	the Tier 1 pieces
+tier2	9503203	3	0	Show me what came out of Blackwing Lair.	the Tier 2 bracers, gloves, belts and boots
+zulgurub	9503207	0	688	Show me what came out of Zul'Gurub.	the Zul'Gurub set pieces
+ruins	9503208	0	689	Show me what came out of the Ruins of Ahn'Qiraj.	the Ruins of Ahn'Qiraj set pieces
+tier25	9503206	6	0	Show me what came out of the Temple of Ahn'Qiraj.	the Tier 2.5 pieces
+tier3	9503205	7	0	Show me what came out of Naxxramas.	the Tier 3 pieces
+supplies	9503204	1	0	What else have you got?	Molten Core crafting materials and the flask recipes

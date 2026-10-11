@@ -14,11 +14,18 @@ Both read the same files in data/, so the server and the client can't disagree:
                spawned), opened by an option of her gossip menu, because one vendor list holds at
                most 150 items. `phase` is the mod-individual-progression phase a player must have
                cleared to get the option (0 = everyone): the SQL puts a condition on the phase's
-               hidden quest, 66000 + phase.
+               hidden quest, 66000 + phase. `achievement` is an achievement the player must have
+               (0 = none), for the raids whose last boss is no phase of its own: Zul'Gurub (688,
+               defeat Hakkar) and the Ruins of Ahn'Qiraj (689, defeat Ossirian).
 - costs.tsv    the prices: one ItemExtendedCost row per number of coins. Every price in stock.tsv
                needs a row here. Give a new price a new id; never reuse one.
 - sources.tsv  who gives coins: a row per instance map, or per boss (`encounter` is the boss's
                DungeonEncounter.dbc id, 0 = every boss of the map; a boss's own row wins).
+- credits.tsv  creatures that are a boss the core's own credit (instance_encounters) doesn't
+               cover: the three it leaves out at Zul'Gurub's Edge of Madness, and the Four
+               Horsemen of the 40 player Naxxramas. Such a boss pays when the last creature
+               listed for it in the instance dies. Only creatures spawned from the creature
+               table are counted as still alive, not ones a script summons.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -67,11 +74,14 @@ PIX_LEVEL = 60
 PIX_SPOT = (0, -14338.9, 446.054, 7.62809, 4.5089)   # map, x, y, z, facing
 PIX_GREETING = (
     "Looking to trade, $c? I deal in Tarnished Undermine Reals and nothing else.$B$B"
-    "The bosses of Blackrock Mountain carry them. So does Onyxia, and so do the ones in "
-    "Stratholme, Scholomance and Dire Maul. Each of them pays out once a day.$B$B"
+    "The bosses of Blackrock Mountain carry them. So does Onyxia, so do the trolls of Zul'Gurub, "
+    "whatever crawls in Ahn'Qiraj and the dead of Naxxramas, and so do the ones in Stratholme, "
+    "Scholomance and Dire Maul. A raid boss pays you once each time its raid resets, a dungeon "
+    "boss once a day.$B$B"
     "Dungeon sets I sell to anybody. What my crews hauled out of the raids I keep for people who "
     "finish a job: put Ragnaros down and I'll open the Molten Core crates. Do the same to Nefarian "
-    "and we'll talk about Blackwing Lair.")
+    "and we'll talk about Blackwing Lair. Hakkar, Ossirian, C'Thun, Kel'Thuzad: bring down any of "
+    "them and I'll show you what came out of their halls.")
 ENTRIES = range(9503200, 9503300)   # this module's creature entries
 
 CLASS_MASKS = {"warrior": 1, "paladin": 2, "hunter": 4, "rogue": 8, "priest": 16, "death knight": 32,
@@ -83,9 +93,12 @@ MAX_VENDOR_ITEMS = 150
 PROGRESSION_QUEST = 66000
 CONDITION_SOURCE_GOSSIP_MENU_OPTION = 15
 CONDITION_SOURCE_NPC_VENDOR = 23
-CONDITION_QUESTREWARDED, CONDITION_CLASS = 8, 15
+CONDITION_QUESTREWARDED, CONDITION_CLASS, CONDITION_ACHIEVEMENT = 8, 15, 17
 NPCFLAG_GOSSIP, NPCFLAG_VENDOR = 1, 128
-GOSSIP_OPTION_VENDOR, GOSSIP_ICON_VENDOR = 3, 1
+# The options open a vendor list but show the chat bubble, not the vendor bag: a 3.3.5 client that
+# is offered a single option with any other icon picks it without showing the greeting, and the
+# greeting is where a new player reads how the other pages open.
+GOSSIP_OPTION_VENDOR, GOSSIP_ICON_CHAT = 3, 0
 
 LOCALE_MPQS = ["patch-{0}-3.MPQ", "patch-{0}-2.MPQ", "patch-{0}.MPQ", "locale-{0}.MPQ"]
 # ItemExtendedCost.dbc: id, honor, arena points, arena bracket, 5 items, 5 counts, rating, group
@@ -116,7 +129,8 @@ def load():
 
     pages = {}
     for r in read_tsv("pages.tsv"):
-        page = dict(key=r["page"], vendor=int(r["vendor"]), phase=int(r["phase"]), option=r["option"],
+        page = dict(key=r["page"], vendor=int(r["vendor"]), phase=int(r["phase"]),
+                    achievement=int(r["achievement"]), option=r["option"],
                     holds=r["holds"], stock=[])
         if page["vendor"] not in ENTRIES or page["vendor"] == PIX:
             sys.exit("pages.tsv: %d is outside this module's entries" % page["vendor"])
@@ -145,7 +159,11 @@ def load():
 
     sources = [dict(map=int(r["map"]), encounter=int(r["encounter"]), coins=int(r["coins"]), comment=r["comment"])
                for r in read_tsv("sources.tsv")]
-    return costs, list(pages.values()), sources
+    credits = [dict(creature=int(r["creature"]), encounter=int(r["encounter"]), comment=r["comment"])
+               for r in read_tsv("credits.tsv")]
+    if len({c["creature"] for c in credits}) != len(credits):
+        sys.exit("credits.tsv: a creature is listed twice")
+    return costs, list(pages.values()), sources, credits
 
 
 # --- SQL ---------------------------------------------------------------------------------------
@@ -163,7 +181,7 @@ CONDITION_COLUMNS = ("INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `Sour
                      "`ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES\n")
 
 
-def write_sql(path, costs, pages, sources):
+def write_sql(path, costs, pages, sources, credits):
     lists = [p["vendor"] for p in pages]
     with open(path, "w", encoding="utf-8") as f:
         w = f.write
@@ -178,6 +196,7 @@ def write_sql(path, costs, pages, sources):
         w("--   creature %d   %s, in Booty Bay (also her spawn guid, gossip menu and text).\n" % (PIX, PIX_NAME))
         w("--   creature %d-%d  her pages: vendor lists, never spawned.\n" % (min(lists), max(lists)))
         w("--   mod_boss_coins_source  which bosses give coins, and how many.\n")
+        w("--   mod_boss_coins_credit  creatures whose death also counts as one of those bosses.\n")
         w("--\n")
         w("-- This module's ids: item %d and ItemExtendedCost %d-%d; creature entries, the spawn\n" % (
             COIN, COST_IDS[0], COST_IDS[-1]))
@@ -217,7 +236,8 @@ def write_sql(path, costs, pages, sources):
 
         w("-- Her greeting, and an option per page. An option opens the page's vendor list (the core\n")
         w("-- takes the list from ActionMenuID). A page with a phase is only offered to a player who\n")
-        w("-- has cleared that mod-individual-progression phase.\n")
+        w("-- has cleared that mod-individual-progression phase, a page with an achievement to a\n")
+        w("-- player who has it.\n")
         w("DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = %d AND `SourceGroup` = %d;\n" % (
             CONDITION_SOURCE_GOSSIP_MENU_OPTION, PIX))
         w("DELETE FROM `gossip_menu_option` WHERE `MenuID` = %d;\n" % PIX)
@@ -228,15 +248,21 @@ def write_sql(path, costs, pages, sources):
         w("INSERT INTO `gossip_menu` (`MenuID`, `TextID`) VALUES\n(%d, %d);\n" % (PIX, PIX))
         w("INSERT INTO `gossip_menu_option` (`MenuID`, `OptionID`, `OptionIcon`, `OptionText`, `OptionBroadcastTextID`, `OptionType`, `OptionNpcFlag`, `ActionMenuID`, `ActionPoiID`, `BoxCoded`, `BoxMoney`, `BoxText`, `BoxBroadcastTextID`) VALUES\n")
         w(",\n".join("(%d, %d, %d, %s, 0, %d, %d, %d, 0, 0, 0, '', 0)" % (
-            PIX, n, GOSSIP_ICON_VENDOR, sql_str(p["option"]), GOSSIP_OPTION_VENDOR, NPCFLAG_VENDOR, p["vendor"])
+            PIX, n, GOSSIP_ICON_CHAT, sql_str(p["option"]), GOSSIP_OPTION_VENDOR, NPCFLAG_VENDOR, p["vendor"])
             for n, p in enumerate(pages)) + ";\n")
-        gated = [(n, p) for n, p in enumerate(pages) if p["phase"]]
-        if gated:
+        gates = []
+        for n, p in enumerate(pages):
+            if p["phase"]:
+                gates.append((n, CONDITION_QUESTREWARDED, PROGRESSION_QUEST + p["phase"],
+                              "%s shows %s to a player who has cleared progression phase %d" % (PIX_NAME, p["holds"], p["phase"])))
+            if p["achievement"]:
+                gates.append((n, CONDITION_ACHIEVEMENT, p["achievement"],
+                              "%s shows %s to a player who has achievement %d" % (PIX_NAME, p["holds"], p["achievement"])))
+        if gates:
             w(CONDITION_COLUMNS)
             w(",\n".join("(%d, %d, %d, 0, 0, %d, 0, %d, 0, 0, 0, 0, 0, '', %s)" % (
-                CONDITION_SOURCE_GOSSIP_MENU_OPTION, PIX, n, CONDITION_QUESTREWARDED, PROGRESSION_QUEST + p["phase"],
-                sql_str("%s shows %s to a player who has cleared progression phase %d" % (PIX_NAME, p["holds"], p["phase"])))
-                for n, p in gated) + ";\n")
+                CONDITION_SOURCE_GOSSIP_MENU_OPTION, PIX, n, kind, value, sql_str(comment))
+                for n, kind, value, comment in gates) + ";\n")
         w("\n")
 
         w("-- What she sells. A class's pieces are shown and sold to that class only; the condition\n")
@@ -258,7 +284,8 @@ def write_sql(path, costs, pages, sources):
         w("\n")
 
         w("-- Who gives coins. `map` is the instance; `encounter` is a boss's DungeonEncounter.dbc id,\n")
-        w("-- or 0 for every boss of the map that has no row of its own. `coins` 0 switches a row off.\n")
+        w("-- or 0 for every boss of the map that has no row of its own. `coins` 0 switches a row off:\n")
+        w("-- on a boss's own row, that one boss.\n")
         w("-- The rows below are only added when missing, so your own changes to them stay; the\n")
         w("-- server reads the table at startup.\n")
         w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_source` (\n")
@@ -270,9 +297,22 @@ def write_sql(path, costs, pages, sources):
         w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: bosses that give coins';\n")
         w("INSERT IGNORE INTO `mod_boss_coins_source` (`map`, `encounter`, `coins`, `comment`) VALUES\n")
         w(",\n".join("(%d, %d, %d, %s)" % (s["map"], s["encounter"], s["coins"], sql_str(s["comment"]))
-                     for s in sources) + ";\n")
-    print("wrote %s: %d items on %d pages, %d prices, %d coin sources" % (
-        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources)))
+                     for s in sources) + ";\n\n")
+
+        w("-- Creatures that are a boss the core's own credit doesn't cover. `encounter` is the boss's\n")
+        w("-- DungeonEncounter.dbc id; a boss of several creatures pays when the last of them in the\n")
+        w("-- instance dies (of those spawned from the creature table: summoned ones aren't seen).\n")
+        w("-- Added when missing and read at startup, like the table above.\n")
+        w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_credit` (\n")
+        w("  `creature` INT UNSIGNED NOT NULL COMMENT 'creature_template entry',\n")
+        w("  `encounter` INT UNSIGNED NOT NULL COMMENT 'DungeonEncounter.dbc id of the boss it is (part of)',\n")
+        w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
+        w("  PRIMARY KEY (`creature`)\n")
+        w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: creatures that count as a boss';\n")
+        w("INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) VALUES\n")
+        w(",\n".join("(%d, %d, %s)" % (c["creature"], c["encounter"], sql_str(c["comment"])) for c in credits) + ";\n")
+    print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses" % (
+        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits)))
 
 
 # --- DBC ---------------------------------------------------------------------------------------
@@ -450,9 +490,9 @@ def main():
     if bool(args.patch_w) != bool(args.out):
         ap.error("--patch-w and --out go together")
 
-    costs, pages, sources = load()
+    costs, pages, sources, credits = load()
     if args.sql:
-        write_sql(args.sql, costs, pages, sources)
+        write_sql(args.sql, costs, pages, sources, credits)
     if args.patch_w:
         with tempfile.TemporaryDirectory() as tmp:
             unpacked = os.path.join(tmp, "w")
