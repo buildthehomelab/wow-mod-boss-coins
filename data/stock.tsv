@@ -79,6 +79,7 @@ tier1	16863	15	warrior	Gauntlets of Might
 tier1	16864	15	warrior	Belt of Might
 tier1	16867	25	warrior	Legplates of Might
 tier1	16862	20	warrior	Sabatons of Might
+tier1	16962	50	warrior	Legplates of Wrath
 tier1	16854	25	paladin	Lawbringer Helm
 tier1	16856	20	paladin	Lawbringer Spaulders
 tier1	16853	25	paladin	Lawbringer Chestguard
@@ -87,6 +88,7 @@ tier1	16860	15	paladin	Lawbringer Gauntlets
 tier1	16858	15	paladin	Lawbringer Belt
 tier1	16855	25	paladin	Lawbringer Legplates
 tier1	16859	20	paladin	Lawbringer Boots
+tier1	16954	50	paladin	Judgement Legplates
 tier1	16846	25	hunter	Giantstalker's Helmet
 tier1	16848	20	hunter	Giantstalker's Epaulets
 tier1	16845	25	hunter	Giantstalker's Breastplate
@@ -95,6 +97,7 @@ tier1	16852	15	hunter	Giantstalker's Gloves
 tier1	16851	15	hunter	Giantstalker's Belt
 tier1	16847	25	hunter	Giantstalker's Leggings
 tier1	16849	20	hunter	Giantstalker's Boots
+tier1	16938	50	hunter	Dragonstalker's Legguards
 tier1	16821	25	rogue	Nightslayer Cover
 tier1	16823	20	rogue	Nightslayer Shoulder Pads
 tier1	16820	25	rogue	Nightslayer Chestpiece
@@ -103,6 +106,7 @@ tier1	16826	15	rogue	Nightslayer Gloves
 tier1	16827	15	rogue	Nightslayer Belt
 tier1	16822	25	rogue	Nightslayer Pants
 tier1	16824	20	rogue	Nightslayer Boots
+tier1	16909	50	rogue	Bloodfang Pants
 tier1	16813	25	priest	Circlet of Prophecy
 tier1	16816	20	priest	Mantle of Prophecy
 tier1	16815	25	priest	Robes of Prophecy
@@ -111,6 +115,7 @@ tier1	16812	15	priest	Gloves of Prophecy
 tier1	16817	15	priest	Girdle of Prophecy
 tier1	16814	25	priest	Pants of Prophecy
 tier1	16811	20	priest	Boots of Prophecy
+tier1	16922	50	priest	Leggings of Transcendence
 tier1	16842	25	shaman	Earthfury Helmet
 tier1	16844	20	shaman	Earthfury Epaulets
 tier1	16841	25	shaman	Earthfury Vestments
@@ -119,6 +124,7 @@ tier1	16839	15	shaman	Earthfury Gauntlets
 tier1	16838	15	shaman	Earthfury Belt
 tier1	16843	25	shaman	Earthfury Legguards
 tier1	16837	20	shaman	Earthfury Boots
+tier1	16946	50	shaman	Legplates of Ten Storms
 tier1	16795	25	mage	Arcanist Crown
 tier1	16797	20	mage	Arcanist Mantle
 tier1	16798	25	mage	Arcanist Robes
@@ -127,6 +133,7 @@ tier1	16801	15	mage	Arcanist Gloves
 tier1	16802	15	mage	Arcanist Belt
 tier1	16796	25	mage	Arcanist Leggings
 tier1	16800	20	mage	Arcanist Boots
+tier1	16915	50	mage	Netherwind Pants
 tier1	16808	25	warlock	Felheart Horns
 tier1	16807	20	warlock	Felheart Shoulder Pads
 tier1	16809	25	warlock	Felheart Robes
@@ -135,6 +142,7 @@ tier1	16805	15	warlock	Felheart Gloves
 tier1	16806	15	warlock	Felheart Belt
 tier1	16810	25	warlock	Felheart Pants
 tier1	16803	20	warlock	Felheart Slippers
+tier1	16930	50	warlock	Nemesis Leggings
 tier1	16834	25	druid	Cenarion Helm
 tier1	16836	20	druid	Cenarion Spaulders
 tier1	16833	25	druid	Cenarion Vestments
@@ -143,6 +151,16 @@ tier1	16831	15	druid	Cenarion Gloves
 tier1	16828	15	druid	Cenarion Belt
 tier1	16835	25	druid	Cenarion Leggings
 tier1	16829	20	druid	Cenarion Boots
+tier1	16901	50	druid	Stormrage Legguards
+onyxia	16963	50	warrior	Helm of Wrath
+onyxia	16955	50	paladin	Judgement Crown
+onyxia	16939	50	hunter	Dragonstalker's Helm
+onyxia	16908	50	rogue	Bloodfang Hood
+onyxia	16921	50	priest	Halo of Transcendence
+onyxia	16947	50	shaman	Helmet of Ten Storms
+onyxia	16914	50	mage	Netherwind Crown
+onyxia	16929	50	warlock	Nemesis Skullcap
+onyxia	16900	50	druid	Stormrage Cover
 tier2	16959	35	warrior	Bracelets of Wrath
 tier2	16964	35	warrior	Gauntlets of Wrath
 tier2	16960	35	warrior	Waistband of Wrath

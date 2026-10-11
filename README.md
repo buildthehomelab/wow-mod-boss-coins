@@ -38,12 +38,13 @@ buying it.
 
 ## Spending coins
 
-**Pix Xizzix** stands on the Booty Bay boardwalk. She has eight pages:
+**Pix Xizzix** stands on the Booty Bay boardwalk. She has nine pages:
 
 | Page | Sells | Price in coins | Open to |
 | --- | --- | --- | --- |
 | Dungeon sets | Dungeon Set 1 (Valor, Lightforge, Magister's and the rest) | bracers 15; belt, gloves, boots, shoulders 25; helm, chest, legs 50 | everyone |
-| Molten Core | Tier 1 | bracers, belt, gloves 15; boots, shoulders 20; helm, chest, legs 25 | players who have killed Ragnaros |
+| Molten Core | Tier 1, and the Tier 2 legs (Ragnaros drops those) | bracers, belt, gloves 15; boots, shoulders 20; helm, chest, legs 25; Tier 2 legs 50 | players who have killed Ragnaros |
+| Onyxia's Lair | Tier 2 helm | 50 | players who have killed Onyxia |
 | Blackwing Lair | Tier 2 bracers, belt, gloves and boots | 35 each | players who have killed Nefarian |
 | Zul'Gurub | the class sets, all five pieces | bracers 15; belt, shoulders 20; chest, necklace, trinket 25 | players who have killed Hakkar |
 | Ruins of Ahn'Qiraj | the class sets, all three pieces | cloak, ring 25; weapon 35 | players who have killed Ossirian |
@@ -52,11 +53,11 @@ buying it.
 | Supplies | Core Leather 10; Lava Core and Fiery Core 15; the four flask recipes and the Potion of Petrification recipe 50 | | players who have killed Ragnaros |
 
 - She shows each class its own pieces only.
-- Tier 2 helm, shoulders, chest and legs are not for sale. They still have to drop.
-- "Has killed Ragnaros", "has killed Nefarian", "has killed C'Thun" and "has killed
-  Kel'Thuzad" are
+- Tier 2 shoulders and chest are not for sale. They still have to drop.
+- "Has killed Ragnaros", "has killed Onyxia", "has killed Nefarian", "has killed C'Thun" and
+  "has killed Kel'Thuzad" are
   [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression)
-  phases 1, 3, 6 and 7. "Has killed Hakkar" and "has killed Ossirian" are the achievements
+  phases 1, 2, 3, 6 and 7. "Has killed Hakkar" and "has killed Ossirian" are the achievements
   Zul'Gurub and Ruins of Ahn'Qiraj, because those two raids are no phase of their own. See
   [Without mod-individual-progression](#without-mod-individual-progression).
 - A player who has only the first page open still gets her greeting first, which says how the
@@ -160,7 +161,8 @@ One page holds at most 150 items; the tool stops if a page goes over.
 
 ### Without mod-individual-progression
 
-Five of the locked pages wait for that module's hidden quests (66001, 66003, 66006 and 66007). On a server
+Six of the locked pages wait for that module's hidden quests (66001, 66002, 66003, 66006 and
+66007). On a server
 without it those quests don't exist, the core drops the conditions with an error in its log at
 startup, and those pages are open to everyone. The Zul'Gurub and Ruins of Ahn'Qiraj pages wait for
 achievements and stay locked as before. To get rid of the errors, set `phase` to `0` on
@@ -170,7 +172,7 @@ every row of `data/pages.tsv` and write the SQL again.
 
 - World: item 90410, Tarnished Undermine Real. `itemextendedcost_dbc` rows 90411 to 90418.
   Creature 9503200, Pix Xizzix, with her spawn (guid 9503200), gossip menu and `npc_text`
-  9503200, and creatures 9503201 to 9503208, which are never spawned: each owns one page of
+  9503200, and creatures 9503201 to 9503209, which are never spawned: each owns one page of
   her stock. `conditions` rows on her gossip options and her stock. Tables
   `mod_boss_coins_source` and `mod_boss_coins_credit`.
 - Characters: table `mod_boss_coins_award`, the lockout or day in which each character last
@@ -191,8 +193,8 @@ each on its own database. The characters file deletes every coin players own.
   a day. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
   is level 55 or higher, and that the worldserver log has the `mod-boss-coins:` lines at
   startup.
-- **Pix Xizzix only offers the dungeon sets:** the other pages wait for Ragnaros, Nefarian,
-  Hakkar, Ossirian, C'Thun and Kel'Thuzad.
+- **Pix Xizzix only offers the dungeon sets:** the other pages wait for Ragnaros, Onyxia,
+  Nefarian, Hakkar, Ossirian, C'Thun and Kel'Thuzad.
 - **A page is empty:** she shows a class its own pieces. Game masters see the same as players.
 - **The module doesn't build or load:** the folder must be named `mod-boss-coins`.
 
@@ -207,8 +209,9 @@ Category: Dungeons & Raids
   give them too. A raid boss gives a character its coins once per lockout, a dungeon boss once
   per day.
 - **Pix Xizzix** has set up shop in Booty Bay. She trades Dungeon Set 1 pieces for Reals, and
-  Tier 1 pieces, **Core Leather**, **Lava Cores**, **Fiery Cores** and flask recipes to players
-  who have defeated Ragnaros.
+  Tier 1 pieces, Tier 2 legs, **Core Leather**, **Lava Cores**, **Fiery Cores** and flask
+  recipes to players who have defeated Ragnaros. Players who have defeated Onyxia can buy their
+  Tier 2 helm.
 - Players who have defeated Nefarian can also buy Tier 2 bracers, belts, gloves and boots from
   her. Players who have defeated Hakkar or Ossirian can buy their class's **Zul'Gurub** or
   **Ruins of Ahn'Qiraj** set. Players who have defeated C'Thun can buy every Tier 2.5 piece, and players who have

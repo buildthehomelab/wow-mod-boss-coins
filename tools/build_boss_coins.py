@@ -67,14 +67,13 @@ QUALITY_COMMON, BIND_ON_PICKUP = 1, 1
 COST_IDS = range(90411, 90430)  # this module's ItemExtendedCost ids
 UNSET = 0xFFFFFFFF
 
-# Pix Xizzix. Friendly to everyone, can't be attacked. She stands on the Booty Bay boardwalk, on
-# the spot of a stock spawn that only exists during the Fireworks Spectacular (a Booty Bay
-# Reveler, guid 420048), which is how the spot is known to be on the planks.
+# Pix Xizzix. Friendly to everyone, can't be attacked. She stands on the Booty Bay boardwalk,
+# where the realm's game masters put her.
 PIX = 9503200                   # her creature entry, spawn guid, gossip menu and greeting text
 PIX_NAME, PIX_TITLE = "Pix Xizzix", "Undermine Real Exchange"
-PIX_DISPLAY = 4482              # a goblin woman (Kelsey Yance's, the Booty Bay cook)
+PIX_DISPLAY = 10665             # a goblin woman (Styleen Silvercart's, Everlook's exotic item vendor)
 PIX_LEVEL = 60
-PIX_SPOT = (0, -14338.9, 446.054, 7.62809, 4.5089)   # map, x, y, z, facing
+PIX_SPOT = (0, -14339.4, 440.842, 7.46643, 1.39431)   # map, x, y, z, facing
 PIX_GREETING = (
     "Looking to trade, $c? I deal in Tarnished Undermine Reals and nothing else.$B$B"
     "The bosses of Blackrock Mountain carry them. So does Onyxia, so do the trolls of Zul'Gurub, "
@@ -82,9 +81,9 @@ PIX_GREETING = (
     "Scholomance and Dire Maul. A raid boss pays you once each time its raid resets, a dungeon "
     "boss once a day.$B$B"
     "Dungeon sets I sell to anybody. What my crews hauled out of the raids I keep for people who "
-    "finish a job: put Ragnaros down and I'll open the Molten Core crates. Do the same to Nefarian "
-    "and we'll talk about Blackwing Lair. Hakkar, Ossirian, C'Thun, Kel'Thuzad: bring down any of "
-    "them and I'll show you what came out of their halls.")
+    "finish a job: put Ragnaros down and I'll open the Molten Core crates. Onyxia, Nefarian, "
+    "Hakkar, Ossirian, C'Thun, Kel'Thuzad: bring down any of them and I'll show you what came out "
+    "of their halls.")
 ENTRIES = range(9503200, 9503300)   # this module's creature entries
 
 CLASS_MASKS = {"warrior": 1, "paladin": 2, "hunter": 4, "rogue": 8, "priest": 16, "death knight": 32,
