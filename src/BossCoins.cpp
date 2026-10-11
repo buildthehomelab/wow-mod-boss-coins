@@ -39,9 +39,11 @@
 #include "Log.h"
 #include "Map.h"
 #include "ObjectMgr.h"
+#include "Opcodes.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "World.h"
+#include "WorldPacket.h"
 #include "WorldSession.h"
 
 #include <algorithm>
@@ -389,7 +391,48 @@ public:
 class BossCoinsPlayerScript : public PlayerScript
 {
 public:
-    BossCoinsPlayerScript() : PlayerScript("BossCoinsPlayerScript", { PLAYERHOOK_ON_BEFORE_BUY_ITEM_FROM_VENDOR }) { }
+    BossCoinsPlayerScript() : PlayerScript("BossCoinsPlayerScript",
+        { PLAYERHOOK_ON_BEFORE_BUY_ITEM_FROM_VENDOR, PLAYERHOOK_ON_SEND_LIST_INVENTORY }) { }
+
+    // A 3.3.5 client draws a vendor's list once, with the item names it has in its cache at that
+    // moment. A name it has to ask the server for arrives after the drawing, and nothing draws
+    // the list again: on a client whose cache was just emptied the rows stay nameless until the
+    // window is opened again. So before one of Pix Xizzix's pages goes out, the details of what
+    // it will show this player go out first, the way the server answers the client's own
+    // request for them. Fires at the start of WorldSession::SendListInventory.
+    void OnPlayerSendListInventory(Player* player, ObjectGuid /*vendorGuid*/, uint32& vendorEntry) override
+    {
+        if (vendorEntry <= NPC_PIX_XIZZIX || vendorEntry > NPC_PIX_XIZZIX_LAST_PAGE)
+            return;
+
+        VendorItemData const* stock = sObjectMgr->GetNpcVendorItemList(vendorEntry);
+        if (!stock)
+            return;
+
+        WorldSession* session = player->GetSession();
+        auto sendDetails = [session](uint32 itemId)
+        {
+            WorldPacket request(CMSG_ITEM_QUERY_SINGLE, 4);
+            request << uint32(itemId);
+            session->HandleItemQuerySingleOpcode(request);
+        };
+
+        // the coin too: the window shows its icon beside every price
+        sendDetails(ITEM_TARNISHED_UNDERMINE_REAL);
+
+        for (uint8 slot = 0; slot < stock->GetItemCount(); ++slot)
+        {
+            VendorItem const* item = stock->GetItem(slot);
+            if (!item)
+                continue;
+
+            // Only what the list will show: another class's pieces are held back by a condition
+            // on her entry, which the core checks the same way.
+            ConditionList conditions = sConditionMgr->GetConditionsForNpcVendorEvent(NPC_PIX_XIZZIX, item->item);
+            if (sConditionMgr->IsObjectMeetToConditions(player, conditions))
+                sendDetails(item->item);
+        }
+    }
 
     // The core sells from the vendor list the session last opened, and checks the conditions of
     // whichever creature the buy packet names. It never asks whether that creature offers that
