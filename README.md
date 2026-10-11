@@ -128,14 +128,17 @@ To make Ragnaros pay three coins while the rest of Molten Core stays at one:
 INSERT INTO mod_boss_coins_source (map, encounter, coins, comment) VALUES (409, 672, 3, 'Ragnaros');
 ```
 
-Some bosses the core's own credit doesn't cover. World table `mod_boss_coins_credit`
-(`creature`, `encounter`) names the creatures that are such a boss, and the boss pays when the
-last of them in the instance dies. Only creatures spawned from the `creature` table count as
-still alive; ones a script summons aren't seen. The module fills it for two:
+Some bosses the core's own credit doesn't fit. World table `mod_boss_coins_credit`
+(`creature`, `encounter`) names the creatures of such a boss. A boss with rows there is paid
+by them alone: when the last of its creatures in the instance dies, killed by players. So list
+every creature of the boss. Only creatures spawned from the `creature` table count as still
+alive; ones a script summons aren't seen. The module fills it for three:
 
 - Zul'Gurub's Edge of Madness, where Gri'lek, Hazza'rah, Renataki and Wushoolay take turns and
   the core only credits Hazza'rah.
-- The Four Horsemen of the 40 player Naxxramas, which mod-individual-progression doesn't credit.
+- The bug trio of the Temple of Ahn'Qiraj, which the core credits as soon as Vem dies.
+- The Four Horsemen of the 40 player Naxxramas, so that they pay when the fourth dies whether
+  or not mod-individual-progression's credit spell goes off.
 
 Restart the server after changing either table. The module only adds its own rows when they are
 missing, so your changes survive updates.

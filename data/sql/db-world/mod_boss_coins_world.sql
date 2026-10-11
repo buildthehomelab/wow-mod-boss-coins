@@ -915,20 +915,25 @@ INSERT IGNORE INTO `mod_boss_coins_source` (`map`, `encounter`, `coins`, `commen
 (533, 1014, 1, 'Naxxramas, the 40 player raid of mod-individual-progression: Sapphiron'),
 (533, 1015, 1, 'Naxxramas, the 40 player raid of mod-individual-progression: Kel\'Thuzad');
 
--- Creatures that are a boss the core's own credit doesn't cover. `encounter` is the boss's
--- DungeonEncounter.dbc id; a boss of several creatures pays when the last of them in the
--- instance dies (of those spawned from the creature table: summoned ones aren't seen).
--- Added when missing and read at startup, like the table above.
+-- The creatures of bosses that the core's own credit doesn't fit. `encounter` is the boss's
+-- DungeonEncounter.dbc id. A boss with rows here is paid by them alone, when the last of its
+-- creatures in the instance dies (of those spawned from the creature table: summoned ones
+-- aren't seen), so every creature of it has to be listed. Added when missing and read at
+-- startup, like the table above.
 CREATE TABLE IF NOT EXISTS `mod_boss_coins_credit` (
   `creature` INT UNSIGNED NOT NULL COMMENT 'creature_template entry',
   `encounter` INT UNSIGNED NOT NULL COMMENT 'DungeonEncounter.dbc id of the boss it is (part of)',
   `comment` VARCHAR(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`creature`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: creatures that count as a boss';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the creatures of bosses paid on their last death';
 INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) VALUES
 (15082, 788, 'Gri\'lek, at the Edge of Madness in Zul\'Gurub'),
+(15083, 788, 'Hazza\'rah, at the Edge of Madness in Zul\'Gurub (the one the core credits)'),
 (15084, 788, 'Renataki, at the Edge of Madness in Zul\'Gurub'),
 (15085, 788, 'Wushoolay, at the Edge of Madness in Zul\'Gurub'),
+(15544, 710, 'Vem, of the bug trio in the Temple of Ahn\'Qiraj (the one the core credits)'),
+(15511, 710, 'Lord Kri, of the bug trio in the Temple of Ahn\'Qiraj'),
+(15543, 710, 'Princess Yauj, of the bug trio in the Temple of Ahn\'Qiraj'),
 (351037, 1009, 'Highlord Mograine, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)'),
 (351038, 1009, 'Sir Zeliek, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)'),
 (351039, 1009, 'Thane Korth\'azz, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)'),

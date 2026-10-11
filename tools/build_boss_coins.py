@@ -21,11 +21,14 @@ Both read the same files in data/, so the server and the client can't disagree:
                needs a row here. Give a new price a new id; never reuse one.
 - sources.tsv  who gives coins: a row per instance map, or per boss (`encounter` is the boss's
                DungeonEncounter.dbc id, 0 = every boss of the map; a boss's own row wins).
-- credits.tsv  creatures that are a boss the core's own credit (instance_encounters) doesn't
-               cover: the three it leaves out at Zul'Gurub's Edge of Madness, and the Four
-               Horsemen of the 40 player Naxxramas. Such a boss pays when the last creature
-               listed for it in the instance dies. Only creatures spawned from the creature
-               table are counted as still alive, not ones a script summons.
+- credits.tsv  the creatures of a boss that the core's own credit (instance_encounters) doesn't
+               fit: it names one of the four that take turns at Zul'Gurub's Edge of Madness, and
+               the first death of one of the Temple of Ahn'Qiraj's bug trio. A boss listed here
+               is paid by this table alone, when the last creature listed for it in the instance
+               dies; list every creature of it, the core's one included. Only creatures spawned
+               from the creature table are counted as still alive, not ones a script summons.
+               The Four Horsemen of the 40 player Naxxramas are here so that they don't depend
+               on that module casting its credit spell.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -299,16 +302,17 @@ def write_sql(path, costs, pages, sources, credits):
         w(",\n".join("(%d, %d, %d, %s)" % (s["map"], s["encounter"], s["coins"], sql_str(s["comment"]))
                      for s in sources) + ";\n\n")
 
-        w("-- Creatures that are a boss the core's own credit doesn't cover. `encounter` is the boss's\n")
-        w("-- DungeonEncounter.dbc id; a boss of several creatures pays when the last of them in the\n")
-        w("-- instance dies (of those spawned from the creature table: summoned ones aren't seen).\n")
-        w("-- Added when missing and read at startup, like the table above.\n")
+        w("-- The creatures of bosses that the core's own credit doesn't fit. `encounter` is the boss's\n")
+        w("-- DungeonEncounter.dbc id. A boss with rows here is paid by them alone, when the last of its\n")
+        w("-- creatures in the instance dies (of those spawned from the creature table: summoned ones\n")
+        w("-- aren't seen), so every creature of it has to be listed. Added when missing and read at\n")
+        w("-- startup, like the table above.\n")
         w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_credit` (\n")
         w("  `creature` INT UNSIGNED NOT NULL COMMENT 'creature_template entry',\n")
         w("  `encounter` INT UNSIGNED NOT NULL COMMENT 'DungeonEncounter.dbc id of the boss it is (part of)',\n")
         w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
         w("  PRIMARY KEY (`creature`)\n")
-        w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: creatures that count as a boss';\n")
+        w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the creatures of bosses paid on their last death';\n")
         w("INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) VALUES\n")
         w(",\n".join("(%d, %d, %s)" % (c["creature"], c["encounter"], sql_str(c["comment"])) for c in credits) + ";\n")
     print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses" % (

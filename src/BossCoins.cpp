@@ -9,11 +9,12 @@
  *   which bosses    world table mod_boss_coins_source: a row per instance map, or per boss
  *   what a boss is  whatever the core credits as a dungeon encounter (instance_encounters), so
  *                   scripted endings count too, like Majordomo Executus surrendering.
- *                   Where the core's credit doesn't cover a boss, world table
- *                   mod_boss_coins_credit names the creatures that are it: the four that take
- *                   turns at Zul'Gurub's Edge of Madness, and the Four Horsemen of the 40 player
- *                   Naxxramas. Such a boss pays when the last of its creatures in the instance
- *                   dies
+ *                   Where the core's credit doesn't fit a boss, world table
+ *                   mod_boss_coins_credit names the creatures that are it, and that boss pays
+ *                   by the table alone: when the last of its creatures in the instance dies.
+ *                   The four that take turns at Zul'Gurub's Edge of Madness (the core credits
+ *                   one), the bug trio of the Temple of Ahn'Qiraj (the core credits the first
+ *                   death of one), the Four Horsemen of the 40 player Naxxramas
  *   how often       once per character per boss and period. A raid's period is its lockout: it
  *                   ends when the raid next resets. A dungeon can be reset at will, so its
  *                   period ends at the next daily quest reset
@@ -47,6 +48,7 @@
 #include <mutex>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace
 {
@@ -69,8 +71,9 @@ namespace
     std::unordered_map<uint64, uint32> sources;
 
     // mod_boss_coins_credit, read once at startup like the sources: creature entry -> the
-    // encounter it is (part of).
+    // encounter it is (part of), and the encounters that have such creatures.
     std::unordered_map<uint32, uint32> extraCredits;
+    std::unordered_set<uint32> creditEncounters;
 
     // The period each character last got a boss's coins in, as the time that period ends:
     // character guid -> encounter -> period end. Bosses die on map threads, several maps at
@@ -259,6 +262,7 @@ namespace
     {
         sources.clear();
         extraCredits.clear();
+        creditEncounters.clear();
 
         if (QueryResult result = WorldDatabase.Query("SELECT map, encounter, coins FROM mod_boss_coins_source"))
         {
@@ -285,6 +289,7 @@ namespace
                 }
 
                 extraCredits[creature] = encounterId;
+                creditEncounters.insert(encounterId);
             } while (result->NextRow());
         }
 
@@ -298,8 +303,7 @@ namespace
 
     void LoadAwards()
     {
-        // A period that ended can't be the current one again. The day's margin is for a start
-        // right after a reset time has passed and before the core has moved on to the next.
+        // A period that ended can't be the current one again. The day's margin costs nothing.
         uint64 now = uint64(GameTime::GetGameTime().count());
         CharacterDatabase.DirectExecute("DELETE FROM mod_boss_coins_award WHERE period_end < {}", now > DAY ? now - DAY : 0);
 
@@ -335,7 +339,11 @@ public:
             if (encounter->creditType != type || encounter->creditEntry != creditEntry)
                 continue;
 
-            PayBoss(map, encounter->dbcEntry->id, source);
+            // A boss with creatures in mod_boss_coins_credit is paid from there, when the last
+            // of them dies. The core's credit can come at the first death.
+            if (!creditEncounters.count(encounter->dbcEntry->id))
+                PayBoss(map, encounter->dbcEntry->id, source);
+
             return;
         }
     }
@@ -357,11 +365,17 @@ public:
         if (itr == extraCredits.end())
             return;
 
-        // The encounter has to be one of this instance's: a creature of that entry spawned
-        // anywhere else is not the boss.
+        // The encounter has to be one of this instance's, at its difficulty: a creature of that
+        // entry spawned anywhere else is not the boss.
         Map* map = unit->FindMap();
         DungeonEncounterEntry const* encounter = sDungeonEncounterStore.LookupEntry(itr->second);
-        if (!map || !map->IsDungeon() || !encounter || encounter->mapId != map->GetId())
+        if (!map || !map->IsDungeon() || !encounter || encounter->mapId != map->GetId()
+            || encounter->difficulty != uint32(map->GetDifficulty()))
+            return;
+
+        // Killed by players, as the core asks before it credits a boss: not by a game master's
+        // command or by something else in the room.
+        if (!unit->ToCreature()->IsDamageEnoughForLootingAndReward())
             return;
 
         // A boss of several creatures isn't dead until they all are.
