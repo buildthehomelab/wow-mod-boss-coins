@@ -37,7 +37,10 @@ buying it.
   or players can do it for their own alts.
 - **Bots get none.** Only players with a game client count.
 - A character can have **250** coins, counting the bank and the mailbox. Coins over that are
-  lost. Coins are bind on pickup.
+  lost.
+- **Coins are bound to the account.** They can't be traded or sold, but a player can mail them
+  to their other characters, of either faction, and the mail arrives at once. A character
+  that already has 250 can't take more out of the mailbox.
 - With full bags the coins come by mail.
 
 ## Spending coins
