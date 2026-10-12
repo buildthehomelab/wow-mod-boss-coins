@@ -49,7 +49,7 @@ buying it.
 | Dungeon sets | Dungeon Set 1 (Valor, Lightforge, Magister's and the rest) | bracers 15; belt, gloves, boots, shoulders 25; helm, chest, legs 50 | everyone |
 | Molten Core | Tier 1, and the Tier 2 legs (Ragnaros drops those) | bracers, belt, gloves 15; boots, shoulders 20; helm, chest, legs 25; Tier 2 legs 50 | players who have killed Ragnaros |
 | Onyxia's Lair | Tier 2 helm | 50 | players who have killed Onyxia |
-| Blackwing Lair | Tier 2 bracers, belt, gloves and boots | 35 each | players who have killed Nefarian |
+| Blackwing Lair | Tier 2 bracers, belt, gloves, boots, shoulders and chest | bracers, belt, gloves, boots, shoulders 35; chest 50 | players who have killed Nefarian |
 | Zul'Gurub | the class sets, all five pieces | bracers 15; belt, shoulders 20; chest, necklace, trinket 25 | players who have killed Hakkar |
 | Ruins of Ahn'Qiraj | the class sets, all three pieces | cloak, ring 25; weapon 35 | players who have killed Ossirian |
 | Temple of Ahn'Qiraj | Tier 2.5, all five pieces | boots, shoulders 50; helm, chest, legs 65 | players who have killed C'Thun |
@@ -57,7 +57,8 @@ buying it.
 | Supplies | Core Leather 10; Lava Core and Fiery Core 15; the four flask recipes and the Potion of Petrification recipe 50 | | players who have killed Ragnaros |
 
 - She shows each class its own pieces only.
-- Tier 2 shoulders and chest are not for sale. They still have to drop.
+- Every Tier 2 piece is for sale, on the page of the raid it drops in: legs from the Molten
+  Core, helm from Onyxia's Lair, the other six from Blackwing Lair.
 - "Has killed Ragnaros", "has killed Onyxia", "has killed Nefarian", "has killed C'Thun" and
   "has killed Kel'Thuzad" are
   [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression)
@@ -217,8 +218,8 @@ Category: Dungeons & Raids
   Tier 1 pieces, Tier 2 legs, **Core Leather**, **Lava Cores**, **Fiery Cores** and flask
   recipes to players who have defeated Ragnaros. Players who have defeated Onyxia can buy their
   Tier 2 helm.
-- Players who have defeated Nefarian can also buy Tier 2 bracers, belts, gloves and boots from
-  her. Players who have defeated Hakkar or Ossirian can buy their class's **Zul'Gurub** or
+- Players who have defeated Nefarian can also buy Tier 2 bracers, belts, gloves, boots,
+  shoulders and chests from her. Players who have defeated Hakkar or Ossirian can buy their class's **Zul'Gurub** or
   **Ruins of Ahn'Qiraj** set. Players who have defeated C'Thun can buy every Tier 2.5 piece, and players who have
   defeated Kel'Thuzad every Tier 3 piece, the ring included.
 
