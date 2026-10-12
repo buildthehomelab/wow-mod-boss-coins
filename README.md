@@ -31,6 +31,10 @@ buying it.
 - **Once per boss.** A raid boss pays each character once per lockout: kill it again after the
   raid has reset and it pays again, whatever the hour. A dungeon boss pays once until the next
   daily quest reset, so resetting a dungeon and running it again gives nothing the second time.
+  A game master who takes a character off a raid lockout (`.instance unbind`) also lets them
+  earn that raid's coins again, in the new instance. So does anything else that takes a
+  character off a lockout: keep mod-playerbots' `Playerbots.ResetInstanceIdForAltBots` at 0,
+  or players can do it for their own alts.
 - **Bots get none.** Only players with a game client count.
 - A character can have **250** coins, counting the bank and the mailbox. Coins over that are
   lost. Coins are bind on pickup.
@@ -175,8 +179,8 @@ every row of `data/pages.tsv` and write the SQL again.
   9503200, and creatures 9503201 to 9503209, which are never spawned: each owns one page of
   her stock. `conditions` rows on her gossip options and her stock. Tables
   `mod_boss_coins_source` and `mod_boss_coins_credit`.
-- Characters: table `mod_boss_coins_award`, the lockout or day in which each character last
-  got each boss's coins.
+- Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
+  in which each character last got each boss's coins.
 - This module's id ranges: item 90410, `ItemExtendedCost` 90411 to 90429, and 9503200 to
   9503299 for everything else. No stock rows are changed.
 
@@ -190,7 +194,8 @@ each on its own database. The characters file deletes every coin players own.
 - **The coin is a question mark, or Pix Xizzix's window shows no prices:** the client doesn't
   have the patch, or has an older copy of it.
 - **A boss gave nothing:** a raid boss pays a character once per lockout, a dungeon boss once
-  a day. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
+  a day. A boss that a game master respawns in the same raid instance doesn't pay again; a new
+  instance after `.instance unbind` does. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
   is level 55 or higher, and that the worldserver log has the `mod-boss-coins:` lines at
   startup.
 - **Pix Xizzix only offers the dungeon sets:** the other pages wait for Ragnaros, Onyxia,

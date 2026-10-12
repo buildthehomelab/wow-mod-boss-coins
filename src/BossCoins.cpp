@@ -17,7 +17,9 @@
  *                   death of one), the Four Horsemen of the 40 player Naxxramas
  *   how often       once per character per boss and period. A raid's period is its lockout: it
  *                   ends when the raid next resets. A dungeon can be reset at will, so its
- *                   period ends at the next daily quest reset
+ *                   period ends at the next daily quest reset. A raid boss also pays again in
+ *                   another instance of the raid, which a character only gets into within one
+ *                   lockout when a game master takes them off the first one
  *   who             players with a client. Bots are sessions without one and get nothing
  *
  * The "once" is kept in memory (and in characters table mod_boss_coins_award, so a restart
@@ -77,11 +79,18 @@ namespace
     std::unordered_map<uint32, uint32> extraCredits;
     std::unordered_set<uint32> creditEncounters;
 
-    // The period each character last got a boss's coins in, as the time that period ends:
-    // character guid -> encounter -> period end. Bosses die on map threads, several maps at
+    // What a character last got a boss's coins for: the period, as the time it ends, and for a
+    // raid boss the instance it died in (0 for a dungeon boss).
+    struct Award
+    {
+        uint64 periodEnd = 0;
+        uint32 instanceId = 0;
+    };
+
+    // character guid -> encounter -> last award. Bosses die on map threads, several maps at
     // once, hence the lock.
     std::mutex awardsLock;
-    std::unordered_map<uint32, std::unordered_map<uint32, uint64>> awards;
+    std::unordered_map<uint32, std::unordered_map<uint32, Award>> awards;
 
     uint64 SourceKey(uint32 mapId, uint32 encounterId)
     {
@@ -130,25 +139,55 @@ namespace
         return uint64(sWorld->GetNextDailyQuestsResetTime().count());
     }
 
-    // True if the character hasn't had this boss's coins in this period, and remembers that it
-    // has them now. Periods are compared for being the same one, not for order: a reset time
-    // that an admin moves must never lock a boss for longer than its new period.
-    bool ClaimForPeriod(Player* player, uint32 encounterId, uint64 periodEnd)
+    // The instance a kill counts for. A raid boss: the instance it died in. A character is
+    // saved to it for the lockout, so the same lockout in another instance means a game master
+    // released them, and the boss they can kill again pays again. A dungeon boss: none, or
+    // resetting the dungeon would pay again.
+    uint32 AwardInstance(Map* map)
+    {
+        return map->IsRaid() ? map->GetInstanceId() : 0;
+    }
+
+    // True if the character hasn't had this boss's coins in this period and instance, and
+    // remembers that it has them now. Periods are compared for being the same one, not for
+    // order: a reset time that an admin moves must never lock a boss for longer than its new
+    // period.
+    bool ClaimForPeriod(Player* player, uint32 encounterId, uint64 periodEnd, uint32 instanceId)
     {
         uint32 guid = player->GetGUID().GetCounter();
 
         {
             std::lock_guard<std::mutex> guard(awardsLock);
-            uint64& last = awards[guid][encounterId];
-            if (last == periodEnd)
+            Award& last = awards[guid][encounterId];
+            if (last.periodEnd == periodEnd && last.instanceId == instanceId)
                 return false;
 
-            last = periodEnd;
+            last = { periodEnd, instanceId };
         }
 
-        CharacterDatabase.Execute("REPLACE INTO mod_boss_coins_award (guid, encounter, period_end) VALUES ({}, {}, {})",
-            guid, encounterId, periodEnd);
+        CharacterDatabase.Execute("REPLACE INTO mod_boss_coins_award (guid, encounter, period_end, instance) VALUES ({}, {}, {}, {})",
+            guid, encounterId, periodEnd, instanceId);
         return true;
+    }
+
+    // An instance is gone for good: nobody is saved to it any more. What was paid in it is
+    // forgotten, because the server gives the id to a new instance after a restart, and that one
+    // must not look like the old one.
+    void ForgetInstance(uint32 instanceId)
+    {
+        if (!instanceId)
+            return;
+
+        bool forgot = false;
+        {
+            std::lock_guard<std::mutex> guard(awardsLock);
+            for (auto& [guid, bosses] : awards)
+                forgot |= std::erase_if(bosses, [instanceId](auto const& boss) { return boss.second.instanceId == instanceId; }) > 0;
+        }
+
+        // Every row of the table is in memory, so nothing forgotten means nothing to delete.
+        if (forgot)
+            CharacterDatabase.Execute("DELETE FROM mod_boss_coins_award WHERE instance = {}", instanceId);
     }
 
     void GiveCoins(Player* player, uint32 count)
@@ -224,10 +263,18 @@ namespace
                 return;
         }
 
+        // A raid boss that pays also saves the players to this instance, or it wouldn't be
+        // theirs for the lockout and another one could pay them again. The core does it itself
+        // for a boss that dies. Majordomo Executus surrenders.
+        if (map->IsRaid())
+            if (InstanceMap* instance = map->ToInstanceMap())
+                instance->PermBindAllPlayers();
+
         uint64 periodEnd = PeriodEnd(map);
+        uint32 instanceId = AwardInstance(map);
         for (MapReference const& ref : map->GetPlayers())
             if (Player* player = ref.GetSource())
-                if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd))
+                if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
                     GiveCoins(player, itr->second);
     }
 
@@ -309,15 +356,20 @@ namespace
         uint64 now = uint64(GameTime::GetGameTime().count());
         CharacterDatabase.DirectExecute("DELETE FROM mod_boss_coins_award WHERE period_end < {}", now > DAY ? now - DAY : 0);
 
+        // An instance the server dropped while it was starting up (one nobody is saved to any
+        // more) never told the module, and its id is free for a new instance now.
+        CharacterDatabase.DirectExecute("DELETE a FROM mod_boss_coins_award AS a LEFT JOIN instance AS i ON i.id = a.instance "
+            "WHERE a.instance > 0 AND i.id IS NULL");
+
         std::lock_guard<std::mutex> guard(awardsLock);
         awards.clear();
 
-        if (QueryResult result = CharacterDatabase.Query("SELECT guid, encounter, period_end FROM mod_boss_coins_award"))
+        if (QueryResult result = CharacterDatabase.Query("SELECT guid, encounter, period_end, instance FROM mod_boss_coins_award"))
         {
             do
             {
                 Field* fields = result->Fetch();
-                awards[fields[0].Get<uint32>()][fields[1].Get<uint32>()] = fields[2].Get<uint64>();
+                awards[fields[0].Get<uint32>()][fields[1].Get<uint32>()] = { fields[2].Get<uint64>(), fields[3].Get<uint32>() };
             } while (result->NextRow());
         }
     }
@@ -326,7 +378,13 @@ namespace
 class BossCoinsGlobalScript : public GlobalScript
 {
 public:
-    BossCoinsGlobalScript() : GlobalScript("BossCoinsGlobalScript", { GLOBALHOOK_ON_AFTER_UPDATE_ENCOUNTER_STATE }) { }
+    BossCoinsGlobalScript() : GlobalScript("BossCoinsGlobalScript",
+        { GLOBALHOOK_ON_AFTER_UPDATE_ENCOUNTER_STATE, GLOBALHOOK_ON_INSTANCEID_REMOVED }) { }
+
+    void OnInstanceIdRemoved(uint32 instanceId) override
+    {
+        ForgetInstance(instanceId);
+    }
 
     // Fires for every creature the core credits in an instance, bosses and others. `encounters`
     // is the instance's boss list for its difficulty; the credit is a boss if it is on it.
