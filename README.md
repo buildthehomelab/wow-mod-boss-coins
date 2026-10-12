@@ -32,7 +32,9 @@ buying it.
   raid has reset and it pays again, whatever the hour. A dungeon boss pays once until the next
   daily quest reset, so resetting a dungeon and running it again gives nothing the second time.
   A game master who takes a character off a raid lockout (`.instance unbind`) also lets them
-  earn that raid's coins again, in the new instance.
+  earn that raid's coins again, in the new instance. So does anything else that takes a
+  character off a lockout: keep mod-playerbots' `Playerbots.ResetInstanceIdForAltBots` at 0,
+  or players can do it for their own alts.
 - **Bots get none.** Only players with a game client count.
 - A character can have **250** coins, counting the bank and the mailbox. Coins over that are
   lost. Coins are bind on pickup.

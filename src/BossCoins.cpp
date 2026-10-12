@@ -263,6 +263,13 @@ namespace
                 return;
         }
 
+        // A raid boss that pays also saves the players to this instance, or it wouldn't be
+        // theirs for the lockout and another one could pay them again. The core does it itself
+        // for a boss that dies. Majordomo Executus surrenders.
+        if (map->IsRaid())
+            if (InstanceMap* instance = map->ToInstanceMap())
+                instance->PermBindAllPlayers();
+
         uint64 periodEnd = PeriodEnd(map);
         uint32 instanceId = AwardInstance(map);
         for (MapReference const& ref : map->GetPlayers())
@@ -348,6 +355,11 @@ namespace
         // A period that ended can't be the current one again. The day's margin costs nothing.
         uint64 now = uint64(GameTime::GetGameTime().count());
         CharacterDatabase.DirectExecute("DELETE FROM mod_boss_coins_award WHERE period_end < {}", now > DAY ? now - DAY : 0);
+
+        // An instance the server dropped while it was starting up (one nobody is saved to any
+        // more) never told the module, and its id is free for a new instance now.
+        CharacterDatabase.DirectExecute("DELETE a FROM mod_boss_coins_award AS a LEFT JOIN instance AS i ON i.id = a.instance "
+            "WHERE a.instance > 0 AND i.id IS NULL");
 
         std::lock_guard<std::mutex> guard(awardsLock);
         awards.clear();
