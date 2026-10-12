@@ -165,38 +165,56 @@ tier2	16959	35	warrior	Bracelets of Wrath
 tier2	16964	35	warrior	Gauntlets of Wrath
 tier2	16960	35	warrior	Waistband of Wrath
 tier2	16965	35	warrior	Sabatons of Wrath
+tier2	16961	35	warrior	Pauldrons of Wrath
+tier2	16966	50	warrior	Breastplate of Wrath
 tier2	16951	35	paladin	Judgement Bindings
 tier2	16956	35	paladin	Judgement Gauntlets
 tier2	16952	35	paladin	Judgement Belt
 tier2	16957	35	paladin	Judgement Sabatons
+tier2	16953	35	paladin	Judgement Spaulders
+tier2	16958	50	paladin	Judgement Breastplate
 tier2	16935	35	hunter	Dragonstalker's Bracers
 tier2	16940	35	hunter	Dragonstalker's Gauntlets
 tier2	16936	35	hunter	Dragonstalker's Belt
 tier2	16941	35	hunter	Dragonstalker's Greaves
+tier2	16937	35	hunter	Dragonstalker's Spaulders
+tier2	16942	50	hunter	Dragonstalker's Breastplate
 tier2	16911	35	rogue	Bloodfang Bracers
 tier2	16907	35	rogue	Bloodfang Gloves
 tier2	16910	35	rogue	Bloodfang Belt
 tier2	16906	35	rogue	Bloodfang Boots
+tier2	16832	35	rogue	Bloodfang Spaulders
+tier2	16905	50	rogue	Bloodfang Chestpiece
 tier2	16926	35	priest	Bindings of Transcendence
 tier2	16920	35	priest	Handguards of Transcendence
 tier2	16925	35	priest	Belt of Transcendence
 tier2	16919	35	priest	Boots of Transcendence
+tier2	16924	35	priest	Pauldrons of Transcendence
+tier2	16923	50	priest	Robes of Transcendence
 tier2	16943	35	shaman	Bracers of Ten Storms
 tier2	16948	35	shaman	Gauntlets of Ten Storms
 tier2	16944	35	shaman	Belt of Ten Storms
 tier2	16949	35	shaman	Greaves of Ten Storms
+tier2	16945	35	shaman	Epaulets of Ten Storms
+tier2	16950	50	shaman	Breastplate of Ten Storms
 tier2	16918	35	mage	Netherwind Bindings
 tier2	16913	35	mage	Netherwind Gloves
 tier2	16818	35	mage	Netherwind Belt
 tier2	16912	35	mage	Netherwind Boots
+tier2	16917	35	mage	Netherwind Mantle
+tier2	16916	50	mage	Netherwind Robes
 tier2	16934	35	warlock	Nemesis Bracers
 tier2	16928	35	warlock	Nemesis Gloves
 tier2	16933	35	warlock	Nemesis Belt
 tier2	16927	35	warlock	Nemesis Boots
+tier2	16932	35	warlock	Nemesis Spaulders
+tier2	16931	50	warlock	Nemesis Robes
 tier2	16904	35	druid	Stormrage Bracers
 tier2	16899	35	druid	Stormrage Handguards
 tier2	16903	35	druid	Stormrage Belt
 tier2	16898	35	druid	Stormrage Boots
+tier2	16902	35	druid	Stormrage Pauldrons
+tier2	16897	50	druid	Stormrage Chestguard
 zulgurub	19822	25	warrior	Zandalar Vindicator's Breastplate
 zulgurub	19824	15	warrior	Zandalar Vindicator's Armguards
 zulgurub	19823	20	warrior	Zandalar Vindicator's Belt
