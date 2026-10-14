@@ -28,6 +28,12 @@ Both read the same files in data/, so the server and the client can't disagree:
                from the creature table are counted as still alive, not ones a script summons.
                The Four Horsemen of the 40 player Naxxramas are here so that they don't depend
                on that module casting its credit spell.
+- shop.tsv     what the launcher's shop sells for coins from the account wallet: an `item`
+               (mailed, `count` of it) or a `service` (1 rename, 2 customize, 3 race change,
+               4 faction change), never both. An empty `name` is the item's or the service's own.
+               `icon` is an Interface/Icons file name for the launcher (empty: the category's).
+               Ids below SHOP_OWN_IDS are the module's and are rewritten with its SQL; add your
+               own rows to the table from that id on.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -85,6 +91,10 @@ PIX_GREETING = (
     "Hakkar, Ossirian, C'Thun, Kel'Thuzad: bring down any of them and I'll show you what came out "
     "of their halls.")
 ENTRIES = range(9503200, 9503300)   # this module's creature entries
+PIX_SCRIPT = "npc_boss_coins_pix"   # adds the account wallet's options to her menu
+
+SHOP_OWN_IDS = 1000             # shop offers below this id are the module's
+SHOP_SERVICES = {1: "rename", 2: "customize", 3: "race change", 4: "faction change"}
 
 CLASS_MASKS = {"warrior": 1, "paladin": 2, "hunter": 4, "rogue": 8, "priest": 16, "death knight": 32,
                "shaman": 64, "mage": 128, "warlock": 256, "druid": 1024}
@@ -165,7 +175,20 @@ def load():
                for r in read_tsv("credits.tsv")]
     if len({c["creature"] for c in credits}) != len(credits):
         sys.exit("credits.tsv: a creature is listed twice")
-    return costs, list(pages.values()), sources, credits
+
+    shop = []
+    for r in read_tsv("shop.tsv"):
+        offer = dict(id=int(r["id"]), category=r["category"], item=int(r["item"]), count=int(r["count"]),
+                     service=int(r["service"]), price=int(r["price"]), sort=int(r["sort"]), name=r["name"],
+                     description=r["description"], icon=r["icon"], comment=r["comment"])
+        if not 0 < offer["id"] < SHOP_OWN_IDS or offer["id"] in [o["id"] for o in shop]:
+            sys.exit("shop.tsv: id %d is listed twice or isn't below %d" % (offer["id"], SHOP_OWN_IDS))
+        if bool(offer["item"]) == bool(offer["service"]) or (offer["service"] and offer["service"] not in SHOP_SERVICES):
+            sys.exit("shop.tsv: offer %d needs either an item or a service (1-4)" % offer["id"])
+        if offer["price"] <= 0 or not 0 < offer["count"] < 256:
+            sys.exit("shop.tsv: offer %d needs a price and a count of 1-255" % offer["id"])
+        shop.append(offer)
+    return costs, list(pages.values()), sources, credits, shop
 
 
 # --- SQL ---------------------------------------------------------------------------------------
@@ -183,7 +206,7 @@ CONDITION_COLUMNS = ("INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `Sour
                      "`ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES\n")
 
 
-def write_sql(path, costs, pages, sources, credits):
+def write_sql(path, costs, pages, sources, credits, shop):
     lists = [p["vendor"] for p in pages]
     with open(path, "w", encoding="utf-8") as f:
         w = f.write
@@ -199,6 +222,7 @@ def write_sql(path, costs, pages, sources, credits):
         w("--   creature %d-%d  her pages: vendor lists, never spawned.\n" % (min(lists), max(lists)))
         w("--   mod_boss_coins_source  which bosses give coins, and how many.\n")
         w("--   mod_boss_coins_credit  creatures whose death also counts as one of those bosses.\n")
+        w("--   mod_boss_coins_shop    what the launcher's shop sells for wallet coins.\n")
         w("--\n")
         w("-- This module's ids: item %d and ItemExtendedCost %d-%d; creature entries, the spawn\n" % (
             COIN, COST_IDS[0], COST_IDS[-1]))
@@ -224,10 +248,10 @@ def write_sql(path, costs, pages, sources, credits):
         w("DELETE FROM `creature` WHERE `guid` = %d;\n" % PIX)
         w("DELETE FROM `creature_template_model` WHERE `CreatureID` BETWEEN %d AND %d;\n" % (ENTRIES[0], ENTRIES[-1]))
         w("DELETE FROM `creature_template` WHERE `entry` BETWEEN %d AND %d;\n" % (ENTRIES[0], ENTRIES[-1]))
-        w("INSERT INTO `creature_template` (`entry`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `BaseAttackTime`, `RangeAttackTime`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `flags_extra`) VALUES\n")
-        rows = ["(%d, %s, %s, %d, %d, %d, 35, %d, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2)" % (
-            PIX, sql_str(PIX_NAME), sql_str(PIX_TITLE), PIX, PIX_LEVEL, PIX_LEVEL, NPCFLAG_GOSSIP | NPCFLAG_VENDOR)]
-        rows += ["(%d, %s, %s, 0, %d, %d, 35, %d, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2)" % (
+        w("INSERT INTO `creature_template` (`entry`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `BaseAttackTime`, `RangeAttackTime`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `flags_extra`, `ScriptName`) VALUES\n")
+        rows = ["(%d, %s, %s, %d, %d, %d, 35, %d, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, %s)" % (
+            PIX, sql_str(PIX_NAME), sql_str(PIX_TITLE), PIX, PIX_LEVEL, PIX_LEVEL, NPCFLAG_GOSSIP | NPCFLAG_VENDOR, sql_str(PIX_SCRIPT))]
+        rows += ["(%d, %s, %s, 0, %d, %d, 35, %d, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, '')" % (
             p["vendor"], sql_str(PIX_NAME), sql_str("page: " + p["holds"]), PIX_LEVEL, PIX_LEVEL, NPCFLAG_VENDOR)
             for p in pages]
         w(",\n".join(rows) + ";\n")
@@ -314,9 +338,36 @@ def write_sql(path, costs, pages, sources, credits):
         w("  PRIMARY KEY (`creature`)\n")
         w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the creatures of bosses paid on their last death';\n")
         w("INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) VALUES\n")
-        w(",\n".join("(%d, %d, %s)" % (c["creature"], c["encounter"], sql_str(c["comment"])) for c in credits) + ";\n")
-    print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses" % (
-        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits)))
+        w(",\n".join("(%d, %d, %s)" % (c["creature"], c["encounter"], sql_str(c["comment"])) for c in credits) + ";\n\n")
+
+        w("-- What the launcher's shop sells, for coins from the account wallet. An offer is an item,\n")
+        w("-- mailed to the character it is bought for, or a service the character gets at the\n")
+        w("-- character list (`service` 1 rename, 2 customize, 3 race change, 4 faction change). An\n")
+        w("-- offer whose item isn't on the server is left out. Ids below %d are this module's and are\n" % SHOP_OWN_IDS)
+        w("-- rewritten whenever its SQL changes: add your own offers from %d on, they stay. The server\n" % SHOP_OWN_IDS)
+        w("-- reads the table at startup and on .coinshop reload.\n")
+        w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (\n")
+        w("  `id` INT UNSIGNED NOT NULL,\n")
+        w("  `category` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'the launcher groups offers by it: mount, pet, service, ...',\n")
+        w("  `name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'empty: the item\\'s or the service\\'s own name',\n")
+        w("  `description` VARCHAR(255) NOT NULL DEFAULT '',\n")
+        w("  `icon` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'Interface/Icons file name for the launcher; empty: the category\\'s',\n")
+        w("  `price` INT UNSIGNED NOT NULL COMMENT 'coins',\n")
+        w("  `item` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'item_template entry, mailed',\n")
+        w("  `count` TINYINT UNSIGNED NOT NULL DEFAULT 1,\n")
+        w("  `service` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 rename, 2 customize, 3 race change, 4 faction change',\n")
+        w("  `sort` INT NOT NULL DEFAULT 0,\n")
+        w("  `enabled` TINYINT UNSIGNED NOT NULL DEFAULT 1,\n")
+        w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
+        w("  PRIMARY KEY (`id`)\n")
+        w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';\n")
+        w("DELETE FROM `mod_boss_coins_shop` WHERE `id` < %d;\n" % SHOP_OWN_IDS)
+        w("INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES\n")
+        w(",\n".join("(%d, %s, %s, %s, %s, %d, %d, %d, %d, %d, 1, %s)" % (
+            o["id"], sql_str(o["category"]), sql_str(o["name"]), sql_str(o["description"]), sql_str(o["icon"]),
+            o["price"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + ";\n")
+    print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses, %d shop offers" % (
+        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits), len(shop)))
 
 
 # --- DBC ---------------------------------------------------------------------------------------
@@ -494,9 +545,9 @@ def main():
     if bool(args.patch_w) != bool(args.out):
         ap.error("--patch-w and --out go together")
 
-    costs, pages, sources, credits = load()
+    costs, pages, sources, credits, shop = load()
     if args.sql:
-        write_sql(args.sql, costs, pages, sources, credits)
+        write_sql(args.sql, costs, pages, sources, credits, shop)
     if args.patch_w:
         with tempfile.TemporaryDirectory() as tmp:
             unpacked = os.path.join(tmp, "w")

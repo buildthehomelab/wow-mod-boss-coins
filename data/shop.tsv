@@ -1,0 +1,20 @@
+id	category	item	count	service	price	sort	name	description	icon	comment
+1	service	0	1	1	20	10		Pick a new name for the character, at the character list.		rename
+2	service	0	1	2	20	20		Change the character's name, gender and looks, at the character list.		customize
+3	service	0	1	3	50	30		Change to another race of the same faction, at the character list.		race change
+4	service	0	1	4	75	40		Move the character to the other faction, with a race of that side, at the character list. Empty the mailbox first; a character in a guild may have to leave it too. The change waits until then.		faction change
+101	pet	90200	1	0	10	100		A companion that follows you around. Mailed to the character.		mod-retail-pets: Red Panda
+102	pet	90201	1	0	10	101		A companion that follows you around. Mailed to the character.		mod-retail-pets: Red Panda Backpacker
+103	pet	90202	1	0	10	102		A companion that follows you around. Mailed to the character.		mod-retail-pets: Sunfur Panda
+104	pet	90203	1	0	10	103		A companion that follows you around. Mailed to the character.		mod-retail-pets: Snowy Panda
+105	pet	90204	1	0	10	104		A companion that follows you around. Mailed to the character.		mod-retail-pets: Mountain Panda
+106	pet	90205	1	0	10	105		A companion that follows you around. Mailed to the character.		mod-retail-pets: Moonfur Panda
+107	pet	90206	1	0	10	106		A companion that follows you around. Mailed to the character.		mod-retail-pets: Azure Panda Backpacker
+108	pet	90207	1	0	10	107		A companion that follows you around. Mailed to the character.		mod-retail-pets: Ashen Panda Backpacker
+109	pet	90208	1	0	10	108		A companion that follows you around. Mailed to the character.		mod-retail-pets: Crimson Panda Backpacker
+110	pet	90209	1	0	10	109		A companion that follows you around. Mailed to the character.		mod-retail-pets: Violet Panda Backpacker
+201	mount	90210	1	0	40	200		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Red Panda
+202	mount	90211	1	0	40	201		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Azure Panda
+203	mount	90212	1	0	40	202		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Ashen Panda
+204	mount	90213	1	0	40	203		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Crimson Panda
+205	mount	90214	1	0	40	204		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Violet Panda
