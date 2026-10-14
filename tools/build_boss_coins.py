@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """The data side of the Tarnished Undermine Real: the module's world database SQL, and the rows
-the client needs in the realm's spell and item patch.
+the client needs in your realm's spell and item patch.
 
     python3 build_boss_coins.py --sql ../data/sql/db-world/mod_boss_coins_world.sql
-    python3 build_boss_coins.py --patch-w patch-z80-spells-and-items.MPQ --client /path/to/client \\
-        --out patch-z80-spells-and-items-new.MPQ
+    python3 build_boss_coins.py --patch-w patch-W.MPQ --client /path/to/client --out patch-W-new.MPQ
 
 Both read the same files in data/, so the server and the client can't disagree:
 
@@ -32,8 +31,8 @@ Both read the same files in data/, so the server and the client can't disagree:
 
 --sql writes the world SQL. It needs nothing but the files above.
 
---patch-w is the patch that carries the realm's Item.dbc and ItemDisplayInfo.dbc (ours is
-patch-z80-spells-and-items.MPQ). A patch MPQ replaces whole files, so the new rows go into its
+--patch-w is the patch that carries your realm's Item.dbc and ItemDisplayInfo.dbc (patch-W.MPQ
+above is an example name). A patch MPQ replaces whole files, so the new rows go into its
 copies; every other file in it is copied unchanged. It gains:
 
 - Item.dbc: the coin, so the client has its icon.
@@ -69,7 +68,7 @@ COST_IDS = range(90411, 90430)  # this module's ItemExtendedCost ids
 UNSET = 0xFFFFFFFF
 
 # Pix Xizzix. Friendly to everyone, can't be attacked. She stands on the Booty Bay boardwalk,
-# where the realm's game masters put her.
+# where the module's SQL spawns her.
 PIX = 9503200                   # her creature entry, spawn guid, gossip menu and greeting text
 PIX_NAME, PIX_TITLE = "Pix Xizzix", "Undermine Real Exchange"
 PIX_DISPLAY = 10665             # a goblin woman (Styleen Silvercart's, Everlook's exotic item vendor)
@@ -485,7 +484,7 @@ def patch_w(files, costs, args, tmp):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sql", help="write the module's world SQL here")
-    ap.add_argument("--patch-w", help="the realm's live spell and item patch")
+    ap.add_argument("--patch-w", help="your realm's live spell and item patch (e.g. patch-W.MPQ)")
     ap.add_argument("--client", help="the base client folder (has Data/<locale>/); only needed the first time")
     ap.add_argument("--locale", default="enUS")
     ap.add_argument("--out", help="the new spell and item patch")

@@ -93,11 +93,11 @@ start.
 ### The client patch
 
 `tools/build_boss_coins.py` adds the coin and the prices to the patch MPQ that carries your
-realm's `Item.dbc`:
+realm's `Item.dbc` (`patch-W.MPQ` below is an example name):
 
 ```bash
-python3 tools/build_boss_coins.py --patch-w patch-z80-spells-and-items.MPQ \
-    --client /path/to/client --out patch-z80-spells-and-items-new.MPQ
+python3 tools/build_boss_coins.py --patch-w patch-W.MPQ \
+    --client /path/to/client --out patch-W-new.MPQ
 ```
 
 - `--patch-w` is that patch. A patch MPQ replaces whole files, so the coin goes into its copy of
