@@ -25,6 +25,11 @@
  * The "once" is kept in memory (and in characters table mod_boss_coins_award, so a restart
  * doesn't forget it): the memory is what is checked, the table is only read at startup.
  *
+ * And a few coins a day for logging in: once per account per day, to the first character of the
+ * account that is in the world after the daily quest reset. Per account, because the coins are
+ * bound to the account: per character, every alt would be another helping. Kept the same way,
+ * in characters table mod_boss_coins_daily.
+ *
  * Released under the MIT License.
  */
 
@@ -47,6 +52,7 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "WorldSessionMgr.h"
 
 #include <algorithm>
 #include <mutex>
@@ -65,6 +71,7 @@ namespace
     {
         bool enabled = true;
         uint32 minBossLevel = 55;
+        uint32 dailyLoginCoins = 2;
     };
 
     Config config;
@@ -91,6 +98,16 @@ namespace
     // once, hence the lock.
     std::mutex awardsLock;
     std::unordered_map<uint32, std::unordered_map<uint32, Award>> awards;
+
+    // account id -> the day it last got its daily coins, as the time the day ends. Real
+    // players' logins and the world's update both run on the world thread (a bot's login can
+    // come from a map thread, but stops before this), so the lock costs nothing; it is there
+    // anyway.
+    std::mutex dailyLock;
+    std::unordered_map<uint32, uint64> dailyClaims;
+
+    // The day the world's update last saw: when it changes, the daily quest reset has happened.
+    uint64 dailySeen = 0;
 
     uint64 SourceKey(uint32 mapId, uint32 encounterId)
     {
@@ -190,6 +207,26 @@ namespace
             CharacterDatabase.Execute("DELETE FROM mod_boss_coins_award WHERE instance = {}", instanceId);
     }
 
+    char const* CoinName(uint32 count)
+    {
+        return count == 1 ? "Tarnished Undermine Real" : "Tarnished Undermine Reals";
+    }
+
+    // How many more coins the character can own, counting the bank and what is waiting in the
+    // mail.
+    uint32 CoinRoom(Player* player, ItemTemplate const* coin)
+    {
+        if (coin->MaxCount <= 0)
+            return UINT32_MAX;
+
+        uint32 owned = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
+        for (auto const& [itemGuid, mailed] : player->mMitems)
+            if (mailed && mailed->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL)
+                owned += mailed->GetCount();
+
+        return owned < uint32(coin->MaxCount) ? uint32(coin->MaxCount) - owned : 0;
+    }
+
     void GiveCoins(Player* player, uint32 count)
     {
         ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
@@ -198,22 +235,13 @@ namespace
 
         ChatHandler chat(player->GetSession());
 
-        // A character can own only so many, counting the bank and what is waiting in the mail.
-        // What doesn't fit under that is gone.
-        if (coin->MaxCount > 0)
+        // A character can own only so many. What doesn't fit under that is gone.
+        uint32 room = CoinRoom(player, coin);
+        if (count > room)
         {
-            uint32 owned = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
-            for (auto const& [itemGuid, mailed] : player->mMitems)
-                if (mailed && mailed->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL)
-                    owned += mailed->GetCount();
-
-            uint32 room = owned < uint32(coin->MaxCount) ? uint32(coin->MaxCount) - owned : 0;
-            if (count > room)
-            {
-                chat.PSendSysMessage("You can't have more than {} Tarnished Undermine Reals. Spend some at Pix Xizzix in Booty Bay.",
-                    coin->MaxCount);
-                count = room;
-            }
+            chat.PSendSysMessage("You can't have more than {} Tarnished Undermine Reals. Spend some at Pix Xizzix in Booty Bay.",
+                coin->MaxCount);
+            count = room;
         }
 
         if (!count)
@@ -276,6 +304,46 @@ namespace
             if (Player* player = ref.GetSource())
                 if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
                     GiveCoins(player, itr->second);
+    }
+
+    // The account's coins for the day, if nobody on it has had them yet. A character that can't
+    // hold them all leaves them for the account's next character in the world.
+    void PayDaily(Player* player)
+    {
+        if (!config.enabled || !config.dailyLoginCoins || !IsRealPlayer(player))
+            return;
+
+        ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
+        if (!coin)
+            return;
+
+        uint32 account = player->GetSession()->GetAccountId();
+        uint64 dayEnd = uint64(sWorld->GetNextDailyQuestsResetTime().count());
+
+        {
+            std::lock_guard<std::mutex> guard(dailyLock);
+            uint64& last = dailyClaims[account];
+            if (last == dayEnd)
+                return;
+
+            uint32 room = CoinRoom(player, coin);
+            if (room < config.dailyLoginCoins)
+            {
+                ChatHandler(player->GetSession()).PSendSysMessage("Your daily {} {} waiting: this character already has {} of "
+                    "the {} it can hold. Spend some at Pix Xizzix in Booty Bay, or log in another character.",
+                    config.dailyLoginCoins, CoinName(config.dailyLoginCoins), config.dailyLoginCoins == 1 ? "is" : "are",
+                    uint32(coin->MaxCount) - room, coin->MaxCount);
+                return;
+            }
+
+            last = dayEnd;
+        }
+
+        CharacterDatabase.Execute("REPLACE INTO mod_boss_coins_daily (account, period_end) VALUES ({}, {})", account, dayEnd);
+
+        ChatHandler(player->GetSession()).PSendSysMessage("Daily login: {} {} for your account. Come back after the next daily reset "
+            "for more.", config.dailyLoginCoins, CoinName(config.dailyLoginCoins));
+        GiveCoins(player, config.dailyLoginCoins);
     }
 
     // Another creature of the same encounter is still standing in this instance. Only creatures
@@ -373,6 +441,25 @@ namespace
             } while (result->NextRow());
         }
     }
+
+    void LoadDailyClaims()
+    {
+        // Only the current day's rows matter, and only to the end of it.
+        uint64 now = uint64(GameTime::GetGameTime().count());
+        CharacterDatabase.DirectExecute("DELETE FROM mod_boss_coins_daily WHERE period_end < {}", now > DAY ? now - DAY : 0);
+
+        std::lock_guard<std::mutex> guard(dailyLock);
+        dailyClaims.clear();
+
+        if (QueryResult result = CharacterDatabase.Query("SELECT account, period_end FROM mod_boss_coins_daily"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                dailyClaims[fields[0].Get<uint32>()] = fields[1].Get<uint64>();
+            } while (result->NextRow());
+        }
+    }
 }
 
 class BossCoinsGlobalScript : public GlobalScript
@@ -450,7 +537,12 @@ class BossCoinsPlayerScript : public PlayerScript
 {
 public:
     BossCoinsPlayerScript() : PlayerScript("BossCoinsPlayerScript",
-        { PLAYERHOOK_ON_BEFORE_BUY_ITEM_FROM_VENDOR, PLAYERHOOK_ON_SEND_LIST_INVENTORY }) { }
+        { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_BEFORE_BUY_ITEM_FROM_VENDOR, PLAYERHOOK_ON_SEND_LIST_INVENTORY }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        PayDaily(player);
+    }
 
     // A 3.3.5 client draws a vendor's list once, with the item names it has in its cache at that
     // moment. A name it has to ask the server for arrives after the drawing, and nothing draws
@@ -516,21 +608,42 @@ public:
 class BossCoinsWorldScript : public WorldScript
 {
 public:
-    BossCoinsWorldScript() : WorldScript("BossCoinsWorldScript", { WORLDHOOK_ON_AFTER_CONFIG_LOAD, WORLDHOOK_ON_STARTUP }) { }
+    BossCoinsWorldScript() : WorldScript("BossCoinsWorldScript",
+        { WORLDHOOK_ON_AFTER_CONFIG_LOAD, WORLDHOOK_ON_STARTUP, WORLDHOOK_ON_UPDATE }) { }
 
     void OnAfterConfigLoad(bool /*reload*/) override
     {
         config.enabled = sConfigMgr->GetOption<bool>("BossCoins.Enable", true);
         config.minBossLevel = sConfigMgr->GetOption<uint32>("BossCoins.MinBossLevel", 55);
+        config.dailyLoginCoins = sConfigMgr->GetOption<uint32>("BossCoins.DailyLogin.Coins", 2);
 
-        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up", config.enabled ? "enabled" : "disabled",
-            config.minBossLevel);
+        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up, {} coin(s) a day for logging in",
+            config.enabled ? "enabled" : "disabled", config.minBossLevel, config.dailyLoginCoins);
     }
 
     void OnStartup() override
     {
         LoadSources();
         LoadAwards();
+        LoadDailyClaims();
+        dailySeen = uint64(sWorld->GetNextDailyQuestsResetTime().count());
+    }
+
+    // Runs after the maps' update, on the world thread. Players who are in the world when the
+    // daily quest reset happens get the new day's coins then, as if they had just logged in. So
+    // does one on a loading screen: a far teleport takes the player out of the world for a while,
+    // and the bags take the coins all the same.
+    void OnUpdate(uint32 /*diff*/) override
+    {
+        uint64 dayEnd = uint64(sWorld->GetNextDailyQuestsResetTime().count());
+        if (dayEnd == dailySeen)
+            return;
+
+        dailySeen = dayEnd;
+        for (auto const& [account, session] : sWorldSessionMgr->GetAllSessions())
+            if (Player* player = session->GetPlayer())
+                if (player->IsInWorld() || player->IsBeingTeleportedFar())
+                    PayDaily(player);
     }
 };
 

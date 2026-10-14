@@ -26,3 +26,12 @@ SET @add_instance := (SELECT IF(COUNT(*) = 0,
 PREPARE add_instance FROM @add_instance;
 EXECUTE add_instance;
 DEALLOCATE PREPARE add_instance;
+
+-- The daily login coins: the day each account last got them, as the time that day ends (the
+-- next daily quest reset when they were given). Once per account, not per character: the coins
+-- are bound to the account. Rows whose day ended more than a day ago are deleted at startup.
+CREATE TABLE IF NOT EXISTS `mod_boss_coins_daily` (
+  `account` INT UNSIGNED NOT NULL COMMENT 'account id',
+  `period_end` BIGINT UNSIGNED NOT NULL COMMENT 'unix time the day of the last daily coins ends',
+  PRIMARY KEY (`account`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: last daily login coins per account';
