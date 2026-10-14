@@ -8,6 +8,10 @@ for it. It follows the coin of the same name in World of Warcraft: Season of Dis
 The point is bad luck protection. A boss that doesn't drop your piece still moves you towards
 buying it. And a couple of coins a day just for logging in, so everyone saves up a little.
 
+Each account also gets a **coin wallet**, and there is a **shop** for mounts, companions and
+character services (rename, customize, race and faction change) that a launcher or a website
+can show: it buys through console commands over SOAP. See [The wallet and the shop](#the-wallet-and-the-shop).
+
 ## Earning coins
 
 | | Coins | |
@@ -46,12 +50,13 @@ buying it. And a couple of coins a day just for logging in, so everyone saves up
 ### Daily login coins
 
 - **2 coins a day per account** for logging in, after the daily quest reset (06:00 server
-  time). The first character of the account in the world gets them; the account's other
-  characters get nothing more that day. Per account, not per character, because the coins can
-  be mailed between the account's characters anyway.
+  time), **into the account wallet**. The first character of the account in the world gets
+  them for the account; the account's other characters get nothing more that day. Per account,
+  not per character, because the coins can be mailed between the account's characters anyway.
 - A player who is already in the world at the reset gets the new day's coins then.
-- A character that can't hold both coins (it has 249 or 250) gets none and is told so. The coins wait for the account's
-  next character, or for this one after it has spent some and logs in again.
+- With `BossCoins.DailyLogin.ToWallet = 0` they go into the bags instead. Then a character
+  that can't hold both coins (it has 249 or 250) gets none and is told so; the coins wait for
+  the account's next character, or for this one after it has spent some and logs in again.
 - Bots get none. `BossCoins.DailyLogin.Coins` sets the number; `0` switches it off.
 
 ## Spending coins
@@ -81,6 +86,55 @@ buying it. And a couple of coins a day just for logging in, so everyone saves up
   [Without mod-individual-progression](#without-mod-individual-progression).
 - A player who has only the first page open still gets her greeting first, which says how the
   others open.
+
+## The wallet and the shop
+
+Every account has a coin wallet. It has no cap (a character's bags hold 250 at most).
+
+- **In:** the daily login coins, and Pix Xizzix's option *Put the coins I carry in my account
+  wallet*, which takes every coin the character has in bags and bank. Boss coins still go into
+  the bags.
+- **Out:** her option *Take coins out of my account wallet* asks how many, and gives as many
+  as the bags and the 250 cap have room for. Her own stock is paid with bag coins, as before.
+  And the shop.
+- `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
+  console too) adds coins, or with a minus takes them.
+- Every change is in table `mod_boss_coins_ledger`: when, how many, from or to which character,
+  and why.
+
+The shop sells what world table `mod_boss_coins_shop` lists, for wallet coins: an item, which
+is mailed to the character it is bought for (the mail keeps 180 days), or a service the character gets at the character
+list. As shipped:
+
+| Offer | Price |
+| --- | --- |
+| Character Rename | 20 |
+| Character Customization (name, gender, looks) | 20 |
+| Race Change | 50 |
+| Faction Change (the mailbox must be empty) | 75 |
+| The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
+| Its five Great Panda mounts | 40 each |
+
+An item that isn't on the server is left out, so the pandas only show with that module
+installed. A character that already has an item (in bags, bank or mail, or the spell it
+teaches), or has the service waiting, isn't sold it again. Neither is a character that can't
+use the item: its race or class, its level, or a skill it needs (a mount needs riding).
+
+There is no shop window in the game. A launcher or website shows it, through two console
+commands that it runs over [SOAP](https://www.azerothcore.org/wiki/remote-access) (with an
+administrator account, as SOAP requires). Players can't run them, game masters neither. Both
+answer one line of JSON:
+
+- `.coinshop list <account id>`: the wallet balance, the account's characters, and every
+  offer with the characters that own it already (`owned`) or can't use it (`cannot`). The
+  command reads the account's characters from the database on the world thread: cache its
+  answer for a little while rather than calling it on every click.
+- `.coinshop buy <account id> <offer id> <character guid>`: `{"ok":true,"balance":..,"message":..}`,
+  or `{"ok":false,"error":..,"message":..}` with error `closed`, `no_offer`, `no_character`,
+  `busy` (a character of the account is logging in), `owned`, `cannot` or `balance`. The coins and the order are written in one transaction.
+
+The caller decides who the account is (a login of its own), so keep SOAP away from players.
+`.coinshop reload` reads the table again.
 
 ## Requirements
 
@@ -129,8 +183,11 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | `BossCoins.Enable` | `1` | With `0` no boss gives coins and there are no daily login coins. Pix Xizzix keeps trading |
 | `BossCoins.MinBossLevel` | `55` | A boss below this level gives nothing, unless it has a row of its own in the table below |
 | `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
+| `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
+| `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |
+| `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters: a mount one character knows isn't sold to the others |
 
-All three reload with `.reload config`.
+All of them reload with `.reload config`.
 
 ### Which bosses give coins
 
@@ -194,17 +251,20 @@ every row of `data/pages.tsv` and write the SQL again.
   Creature 9503200, Pix Xizzix, with her spawn (guid 9503200), gossip menu and `npc_text`
   9503200, and creatures 9503201 to 9503209, which are never spawned: each owns one page of
   her stock. `conditions` rows on her gossip options and her stock. Tables
-  `mod_boss_coins_source` and `mod_boss_coins_credit`.
+  `mod_boss_coins_source`, `mod_boss_coins_credit` and `mod_boss_coins_shop` (offer ids below
+  1000 are the module's: its SQL keeps them up to date but sets `price`, `sort` and `enabled`
+  only on a new row, so prices you change stay; add your own offers from 1000).
 - Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
   in which each character last got each boss's coins. Table `mod_boss_coins_daily`, the day
-  each account last got its daily login coins.
+  each account last got its daily login coins. Tables `mod_boss_coins_wallet` (balances) and
+  `mod_boss_coins_ledger` (every change).
 - This module's id ranges: item 90410, `ItemExtendedCost` 90411 to 90429, and 9503200 to
   9503299 for everything else. No stock rows are changed.
 
 ## Uninstalling
 
 Remove the module folder and rebuild, then run the two files in `data/sql/uninstall/` by hand,
-each on its own database. The characters file deletes every coin players own.
+each on its own database. The characters file deletes every coin players own, wallets included.
 
 ## Troubleshooting
 
@@ -215,8 +275,11 @@ each on its own database. The characters file deletes every coin players own.
   instance after `.instance unbind` does. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
   is level 55 or higher, and that the worldserver log has the `mod-boss-coins:` lines at
   startup.
-- **No daily login coins:** the account already had them today, on another character, or the
-  character has 249 or 250. The day starts at the daily quest reset, not at midnight.
+- **No daily login coins:** the account already had them today, on another character (look in
+  `.wallet`). The day starts at the daily quest reset, not at midnight.
+- **Pix Xizzix has no wallet options:** the character carries no coins and the wallet is empty.
+- **A shop item never arrived:** it is in the mail, from Pix Xizzix. `mod_boss_coins_ledger`
+  has every purchase.
 - **Pix Xizzix only offers the dungeon sets:** the other pages wait for Ragnaros, Onyxia,
   Nefarian, Hakkar, Ossirian, C'Thun and Kel'Thuzad.
 - **A page is empty:** she shows a class its own pieces. Game masters see the same as players.
@@ -242,7 +305,11 @@ Category: Dungeons & Raids
   defeated Kel'Thuzad every Tier 3 piece, the ring included.
 
 - Every account now gets **2 Tarnished Undermine Reals a day** for logging in, after the
-  daily reset. The first character you log in that day gets them.
+  daily reset. They go into your new **account wallet**: type `.wallet` to see it.
+- Pix Xizzix keeps your wallet. She puts the Reals you carry into it, and pays them back out
+  when you want to buy from her.
+- The wallet pays for the new **coin shop**: character renames, new looks, race and faction
+  changes, red panda companions and Great Panda mounts. Bought items arrive by mail.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.

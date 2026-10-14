@@ -9,6 +9,7 @@
 --   creature 9503201-9503209  her pages: vendor lists, never spawned.
 --   mod_boss_coins_source  which bosses give coins, and how many.
 --   mod_boss_coins_credit  creatures whose death also counts as one of those bosses.
+--   mod_boss_coins_shop    what the launcher's shop sells for wallet coins.
 --
 -- This module's ids: item 90410 and ItemExtendedCost 90411-90429; creature entries, the spawn
 -- guid, gossip menu and npc_text 9503200-9503299. No stock rows are changed. Idempotent.
@@ -37,17 +38,17 @@ INSERT INTO `itemextendedcost_dbc` (`ID`, `HonorPoints`, `ArenaPoints`, `ArenaBr
 DELETE FROM `creature` WHERE `guid` = 9503200;
 DELETE FROM `creature_template_model` WHERE `CreatureID` BETWEEN 9503200 AND 9503299;
 DELETE FROM `creature_template` WHERE `entry` BETWEEN 9503200 AND 9503299;
-INSERT INTO `creature_template` (`entry`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `BaseAttackTime`, `RangeAttackTime`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `flags_extra`) VALUES
-(9503200, 'Pix Xizzix', 'Undermine Real Exchange', 9503200, 60, 60, 35, 129, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503201, 'Pix Xizzix', 'page: the Dungeon Set 1 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503202, 'Pix Xizzix', 'page: the Tier 1 pieces and the Tier 2 legs', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503209, 'Pix Xizzix', 'page: the Tier 2 helms', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503203, 'Pix Xizzix', 'page: the Tier 2 bracers, gloves, belts, boots, shoulders and chests', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503207, 'Pix Xizzix', 'page: the Zul\'Gurub set pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503208, 'Pix Xizzix', 'page: the Ruins of Ahn\'Qiraj set pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503206, 'Pix Xizzix', 'page: the Tier 2.5 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503205, 'Pix Xizzix', 'page: the Tier 3 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2),
-(9503204, 'Pix Xizzix', 'page: Molten Core crafting materials and the flask recipes', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2);
+INSERT INTO `creature_template` (`entry`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `BaseAttackTime`, `RangeAttackTime`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `flags_extra`, `ScriptName`) VALUES
+(9503200, 'Pix Xizzix', 'Undermine Real Exchange', 9503200, 60, 60, 35, 129, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, 'npc_boss_coins_pix'),
+(9503201, 'Pix Xizzix', 'page: the Dungeon Set 1 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503202, 'Pix Xizzix', 'page: the Tier 1 pieces and the Tier 2 legs', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503209, 'Pix Xizzix', 'page: the Tier 2 helms', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503203, 'Pix Xizzix', 'page: the Tier 2 bracers, gloves, belts, boots, shoulders and chests', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503207, 'Pix Xizzix', 'page: the Zul\'Gurub set pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503208, 'Pix Xizzix', 'page: the Ruins of Ahn\'Qiraj set pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503206, 'Pix Xizzix', 'page: the Tier 2.5 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503205, 'Pix Xizzix', 'page: the Tier 3 pieces', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, ''),
+(9503204, 'Pix Xizzix', 'page: Molten Core crafting materials and the flask recipes', 0, 60, 60, 35, 128, 1, 1.14286, 2000, 2000, 1, 768, 2048, 7, 2, '');
 INSERT INTO `creature_template_model` (`CreatureID`, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`) VALUES
 (9503200, 0, 10665, 1, 1),
 (9503201, 0, 10665, 1, 1),
@@ -1017,3 +1018,49 @@ INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) 
 (351038, 1009, 'Sir Zeliek, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)'),
 (351039, 1009, 'Thane Korth\'azz, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)'),
 (351040, 1009, 'Lady Blaumeux, one of the Four Horsemen of the 40 player Naxxramas (mod-individual-progression)');
+
+-- What the launcher's shop sells, for coins from the account wallet. An offer is an item,
+-- mailed to the character it is bought for, or a service the character gets at the
+-- character list (`service` 1 rename, 2 customize, 3 race change, 4 faction change). An
+-- offer whose item isn't on the server is left out. Ids below 1000 are this module's: what
+-- they are follows the module, but `price`, `sort` and `enabled` are only set when an offer
+-- is new, so prices you change stay. An offer the module no longer has is removed. Add your
+-- own offers from 1000 on, they stay. The server reads the table at startup and on
+-- .coinshop reload.
+CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (
+  `id` INT UNSIGNED NOT NULL,
+  `category` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'the launcher groups offers by it: mount, pet, service, ...',
+  `name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'empty: the item\'s or the service\'s own name',
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
+  `icon` VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'Interface/Icons file name for the launcher; empty: the category\'s',
+  `price` INT UNSIGNED NOT NULL COMMENT 'coins',
+  `item` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'item_template entry, mailed',
+  `count` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `service` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 rename, 2 customize, 3 race change, 4 faction change',
+  `sort` INT NOT NULL DEFAULT 0,
+  `enabled` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `comment` VARCHAR(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';
+DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205);
+INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES
+(1, 'service', '', 'Pick a new name for the character, at the character list.', '', 20, 0, 1, 1, 10, 1, 'rename'),
+(2, 'service', '', 'Change the character\'s name, gender and looks, at the character list.', '', 20, 0, 1, 2, 20, 1, 'customize'),
+(3, 'service', '', 'Change to another race of the same faction, at the character list.', '', 50, 0, 1, 3, 30, 1, 'race change'),
+(4, 'service', '', 'Move the character to the other faction, with a race of that side, at the character list. Empty the mailbox first; a character in a guild may have to leave it too. The change waits until then.', '', 75, 0, 1, 4, 40, 1, 'faction change'),
+(101, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90200, 1, 0, 100, 1, 'mod-retail-pets: Red Panda'),
+(102, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90201, 1, 0, 101, 1, 'mod-retail-pets: Red Panda Backpacker'),
+(103, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90202, 1, 0, 102, 1, 'mod-retail-pets: Sunfur Panda'),
+(104, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90203, 1, 0, 103, 1, 'mod-retail-pets: Snowy Panda'),
+(105, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90204, 1, 0, 104, 1, 'mod-retail-pets: Mountain Panda'),
+(106, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90205, 1, 0, 105, 1, 'mod-retail-pets: Moonfur Panda'),
+(107, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90206, 1, 0, 106, 1, 'mod-retail-pets: Azure Panda Backpacker'),
+(108, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90207, 1, 0, 107, 1, 'mod-retail-pets: Ashen Panda Backpacker'),
+(109, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90208, 1, 0, 108, 1, 'mod-retail-pets: Crimson Panda Backpacker'),
+(110, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90209, 1, 0, 109, 1, 'mod-retail-pets: Violet Panda Backpacker'),
+(201, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90210, 1, 0, 200, 1, 'mod-retail-pets: Great Red Panda'),
+(202, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90211, 1, 0, 201, 1, 'mod-retail-pets: Great Azure Panda'),
+(203, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90212, 1, 0, 202, 1, 'mod-retail-pets: Great Ashen Panda'),
+(204, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90213, 1, 0, 203, 1, 'mod-retail-pets: Great Crimson Panda'),
+(205, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90214, 1, 0, 204, 1, 'mod-retail-pets: Great Violet Panda')
+ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), `icon` = VALUES(`icon`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), `comment` = VALUES(`comment`);

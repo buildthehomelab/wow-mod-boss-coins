@@ -2,8 +2,8 @@
 -- after removing the module. It isn't applied automatically: AzerothCore only runs the module's
 -- db-world and db-characters folders.
 --
--- Removes Pix Xizzix with her spawn, greeting, pages and stock, the prices, the coin and the
--- two tables of coin sources (your own changes to them included). Coins that players already own stay
+-- Removes Pix Xizzix with her spawn, greeting, pages and stock, the prices, the coin, the
+-- two tables of coin sources and the launcher shop's offers (your own changes to them included). Coins that players already own stay
 -- in their bags as items the server no longer knows: see the characters uninstall file. It also
 -- forgets that the module's updates were applied, so installing the module again applies them
 -- again. Idempotent: safe to run again.
@@ -25,5 +25,6 @@ DELETE FROM `item_template` WHERE `entry` = 90410;
 
 DROP TABLE IF EXISTS `mod_boss_coins_source`;
 DROP TABLE IF EXISTS `mod_boss_coins_credit`;
+DROP TABLE IF EXISTS `mod_boss_coins_shop`;
 
 DELETE FROM `updates` WHERE `name` LIKE 'mod\_boss\_coins\_%';

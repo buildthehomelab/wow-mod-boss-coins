@@ -28,11 +28,13 @@
  * And a few coins a day for logging in: once per account per day, to the first character of the
  * account that is in the world after the daily quest reset. Per account, because the coins are
  * bound to the account: per character, every alt would be another helping. Kept the same way,
- * in characters table mod_boss_coins_daily.
+ * in characters table mod_boss_coins_daily. The daily coins go into the account's wallet
+ * (CoinWallet.cpp), not into bags, unless BossCoins.DailyLogin.ToWallet is off.
  *
  * Released under the MIT License.
  */
 
+#include "BossCoins.h"
 #include "Chat.h"
 #include "ConditionMgr.h"
 #include "Config.h"
@@ -56,22 +58,47 @@
 
 #include <algorithm>
 #include <mutex>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
+using namespace BossCoins;
+
+bool BossCoins::IsRealPlayer(Player* player)
+{
+    WorldSession* session = player ? player->GetSession() : nullptr;
+    return session && !IsBotSession(session);
+}
+
+char const* BossCoins::CoinName(uint32 count)
+{
+    return count == 1 ? "Tarnished Undermine Real" : "Tarnished Undermine Reals";
+}
+
+uint32 BossCoins::CoinRoom(Player* player)
+{
+    ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
+    if (!coin)
+        return 0;
+
+    if (coin->MaxCount <= 0)
+        return UINT32_MAX;
+
+    uint32 owned = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
+    for (auto const& [itemGuid, mailed] : player->mMitems)
+        if (mailed && mailed->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL)
+            owned += mailed->GetCount();
+
+    return owned < uint32(coin->MaxCount) ? uint32(coin->MaxCount) - owned : 0;
+}
+
 namespace
 {
-    constexpr uint32 ITEM_TARNISHED_UNDERMINE_REAL = 90410;
-    // Pix Xizzix, and the creature entries that own the pages of her stock (the module's SQL).
-    constexpr uint32 NPC_PIX_XIZZIX = 9503200;
-    constexpr uint32 NPC_PIX_XIZZIX_LAST_PAGE = 9503299;
-
     struct Config
     {
         bool enabled = true;
         uint32 minBossLevel = 55;
         uint32 dailyLoginCoins = 2;
+        bool dailyToWallet = true;
     };
 
     Config config;
@@ -112,36 +139,6 @@ namespace
     uint64 SourceKey(uint32 mapId, uint32 encounterId)
     {
         return (uint64(mapId) << 32) | encounterId;
-    }
-
-    // Bot sessions: IsHeadless() on current playerbots cores, IsBot() on older ones.
-    template <typename Session, typename = void>
-    struct HasIsHeadless : std::false_type { };
-
-    template <typename Session>
-    struct HasIsHeadless<Session, std::void_t<decltype(std::declval<Session&>().IsHeadless())>> : std::true_type { };
-
-    template <typename Session, typename = void>
-    struct HasIsBot : std::false_type { };
-
-    template <typename Session>
-    struct HasIsBot<Session, std::void_t<decltype(std::declval<Session&>().IsBot())>> : std::true_type { };
-
-    template <typename Session>
-    bool IsBotSession(Session* session)
-    {
-        if constexpr (HasIsHeadless<Session>::value)
-            return session->IsHeadless();
-        else if constexpr (HasIsBot<Session>::value)
-            return session->IsBot();
-        else
-            return false;
-    }
-
-    bool IsRealPlayer(Player* player)
-    {
-        WorldSession* session = player ? player->GetSession() : nullptr;
-        return session && !IsBotSession(session);
     }
 
     // When the period a kill in this instance falls in ends. A raid: its next reset, so each
@@ -207,26 +204,6 @@ namespace
             CharacterDatabase.Execute("DELETE FROM mod_boss_coins_award WHERE instance = {}", instanceId);
     }
 
-    char const* CoinName(uint32 count)
-    {
-        return count == 1 ? "Tarnished Undermine Real" : "Tarnished Undermine Reals";
-    }
-
-    // How many more coins the character can own, counting the bank and what is waiting in the
-    // mail.
-    uint32 CoinRoom(Player* player, ItemTemplate const* coin)
-    {
-        if (coin->MaxCount <= 0)
-            return UINT32_MAX;
-
-        uint32 owned = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
-        for (auto const& [itemGuid, mailed] : player->mMitems)
-            if (mailed && mailed->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL)
-                owned += mailed->GetCount();
-
-        return owned < uint32(coin->MaxCount) ? uint32(coin->MaxCount) - owned : 0;
-    }
-
     void GiveCoins(Player* player, uint32 count)
     {
         ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
@@ -236,7 +213,7 @@ namespace
         ChatHandler chat(player->GetSession());
 
         // A character can own only so many. What doesn't fit under that is gone.
-        uint32 room = CoinRoom(player, coin);
+        uint32 room = CoinRoom(player);
         if (count > room)
         {
             chat.PSendSysMessage("You can't have more than {} Tarnished Undermine Reals. Spend some at Pix Xizzix in Booty Bay.",
@@ -306,8 +283,9 @@ namespace
                     GiveCoins(player, itr->second);
     }
 
-    // The account's coins for the day, if nobody on it has had them yet. A character that can't
-    // hold them all leaves them for the account's next character in the world.
+    // The account's coins for the day, if nobody on it has had them yet. Into the account's
+    // wallet; or, with the wallet switched off, into the bags, where a character that can't hold
+    // them all leaves them for the account's next character in the world.
     void PayDaily(Player* player)
     {
         if (!config.enabled || !config.dailyLoginCoins || !IsRealPlayer(player))
@@ -319,6 +297,7 @@ namespace
 
         uint32 account = player->GetSession()->GetAccountId();
         uint64 dayEnd = uint64(sWorld->GetNextDailyQuestsResetTime().count());
+        bool toWallet = config.dailyToWallet;
 
         {
             std::lock_guard<std::mutex> guard(dailyLock);
@@ -326,10 +305,10 @@ namespace
             if (last == dayEnd)
                 return;
 
-            uint32 room = CoinRoom(player, coin);
+            uint32 room = toWallet ? UINT32_MAX : CoinRoom(player);
             if (room < config.dailyLoginCoins)
             {
-                ChatHandler(player->GetSession()).PSendSysMessage("Your daily {} {} waiting: this character already has {} of "
+                ChatHandler(player->GetSession()).PSendSysMessage("Your daily {} {} {} waiting: this character already has {} of "
                     "the {} it can hold. Spend some at Pix Xizzix in Booty Bay, or log in another character.",
                     config.dailyLoginCoins, CoinName(config.dailyLoginCoins), config.dailyLoginCoins == 1 ? "is" : "are",
                     uint32(coin->MaxCount) - room, coin->MaxCount);
@@ -340,6 +319,15 @@ namespace
         }
 
         CharacterDatabase.Execute("REPLACE INTO mod_boss_coins_daily (account, period_end) VALUES ({}, {})", account, dayEnd);
+
+        if (toWallet)
+        {
+            Wallet::Add(account, player->GetGUID().GetCounter(), config.dailyLoginCoins, "daily");
+            ChatHandler(player->GetSession()).PSendSysMessage("Daily login: {} {} added to your account wallet, which now holds {}. "
+                "Spend them in the launcher's shop. Come back after the next daily reset for more.",
+                config.dailyLoginCoins, CoinName(config.dailyLoginCoins), Wallet::Balance(account));
+            return;
+        }
 
         ChatHandler(player->GetSession()).PSendSysMessage("Daily login: {} {} for your account. Come back after the next daily reset "
             "for more.", config.dailyLoginCoins, CoinName(config.dailyLoginCoins));
@@ -616,9 +604,11 @@ public:
         config.enabled = sConfigMgr->GetOption<bool>("BossCoins.Enable", true);
         config.minBossLevel = sConfigMgr->GetOption<uint32>("BossCoins.MinBossLevel", 55);
         config.dailyLoginCoins = sConfigMgr->GetOption<uint32>("BossCoins.DailyLogin.Coins", 2);
+        config.dailyToWallet = sConfigMgr->GetOption<bool>("BossCoins.DailyLogin.ToWallet", true);
 
-        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up, {} coin(s) a day for logging in",
-            config.enabled ? "enabled" : "disabled", config.minBossLevel, config.dailyLoginCoins);
+        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up, {} coin(s) a day for logging in, into the {}",
+            config.enabled ? "enabled" : "disabled", config.minBossLevel, config.dailyLoginCoins,
+            config.dailyToWallet ? "account wallet" : "bags");
     }
 
     void OnStartup() override
@@ -626,13 +616,15 @@ public:
         LoadSources();
         LoadAwards();
         LoadDailyClaims();
+        Wallet::Load();
+        Shop::Load();
         dailySeen = uint64(sWorld->GetNextDailyQuestsResetTime().count());
     }
 
     // Runs after the maps' update, on the world thread. Players who are in the world when the
     // daily quest reset happens get the new day's coins then, as if they had just logged in. So
     // does one on a loading screen: a far teleport takes the player out of the world for a while,
-    // and the bags take the coins all the same.
+    // and the wallet or the bags take the coins all the same.
     void OnUpdate(uint32 /*diff*/) override
     {
         uint64 dayEnd = uint64(sWorld->GetNextDailyQuestsResetTime().count());
@@ -653,4 +645,6 @@ void AddBossCoinsScripts()
     new BossCoinsUnitScript();
     new BossCoinsPlayerScript();
     new BossCoinsWorldScript();
+    AddBossCoinsWalletScripts();
+    AddBossCoinsShopScripts();
 }

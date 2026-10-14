@@ -33,10 +33,41 @@ BossCoins.MinBossLevel = 55
 #    BossCoins.DailyLogin.Coins
 #        Description: Coins an account gets once a day for logging in, after the daily quest
 #                     reset. The first character of the account in the world gets them,
-#                     including one already in the world when the reset happens. A character
-#                     that can't hold them all leaves them for the account's next one. 0
-#                     switches it off.
+#                     including one already in the world when the reset happens. 0 switches
+#                     it off.
 #        Default:     2
 #
 
 BossCoins.DailyLogin.Coins = 2
+
+#
+#    BossCoins.DailyLogin.ToWallet
+#        Description: Where the daily login coins go. 1: into the account wallet, which the
+#                     launcher's shop spends from and Pix Xizzix pays out of. 0: into the bags
+#                     of the character that logs in; one that can't hold them all leaves them
+#                     for the account's next character.
+#        Default:     1
+#
+
+BossCoins.DailyLogin.ToWallet = 1
+
+#
+#    BossCoins.Shop.Enable
+#        Description: The launcher's shop: the .coinshop console commands that the portal calls
+#                     over SOAP. With 0 they answer that the shop is closed. The wallet stays:
+#                     its coins, the daily login coins and Pix Xizzix's wallet options.
+#        Default:     1
+#
+
+BossCoins.Shop.Enable = 1
+
+#
+#    BossCoins.Shop.AccountWideSpells
+#        Description: 1 if mounts and companions are shared by all the characters of an
+#                     account on your server (a module that teaches every character what one
+#                     knows). Then a shop item that teaches a spell one character knows counts
+#                     as owned by every character of the account, and isn't sold again.
+#        Default:     0
+#
+
+BossCoins.Shop.AccountWideSpells = 0

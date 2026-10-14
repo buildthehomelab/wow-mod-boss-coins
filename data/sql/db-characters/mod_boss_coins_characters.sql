@@ -35,3 +35,31 @@ CREATE TABLE IF NOT EXISTS `mod_boss_coins_daily` (
   `period_end` BIGINT UNSIGNED NOT NULL COMMENT 'unix time the day of the last daily coins ends',
   PRIMARY KEY (`account`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: last daily login coins per account';
+
+-- The account wallet: coins that belong to an account rather than to a character's bags. The
+-- daily login coins go in, Pix Xizzix moves coins between bags and wallet, and the launcher's
+-- shop spends from it. The server keeps the balances in memory, reads this table at startup
+-- and changes `coins` by each difference (so it is signed: a change applied ahead of an earlier
+-- one never fails).
+CREATE TABLE IF NOT EXISTS `mod_boss_coins_wallet` (
+  `account` INT UNSIGNED NOT NULL COMMENT 'account id',
+  `coins` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`account`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: account wallet balances';
+
+-- Every change to a wallet: when, which account, the character it came from or went to (0 for
+-- none), by how much, the balance after it, and why (daily, deposit, withdraw, shop, gm), with
+-- the shop offer for a purchase. Nothing reads it but people: it is the record to settle "where
+-- did my coins go".
+CREATE TABLE IF NOT EXISTS `mod_boss_coins_ledger` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `at` BIGINT UNSIGNED NOT NULL COMMENT 'unix time',
+  `account` INT UNSIGNED NOT NULL,
+  `guid` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'character, 0 for none',
+  `coins` INT NOT NULL COMMENT 'the change: more than 0 in, less than 0 out',
+  `balance` INT UNSIGNED NOT NULL COMMENT 'the wallet after the change',
+  `reason` VARCHAR(16) NOT NULL,
+  `offer` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'mod_boss_coins_shop id of a purchase',
+  PRIMARY KEY (`id`),
+  KEY `account` (`account`, `at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: account wallet changes';
