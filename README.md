@@ -117,8 +117,8 @@ list. As shipped:
 
 An item that isn't on the server is left out, so the pandas only show with that module
 installed. A character that already has an item (in bags, bank or mail, or the spell it
-teaches), or has the service waiting, isn't sold it again; neither is a character of a race or
-class the item isn't for.
+teaches), or has the service waiting, isn't sold it again. Neither is a character that can't
+use the item: its race or class, its level, or a skill it needs (a mount needs riding).
 
 There is no shop window in the game. A launcher or website shows it, through two console
 commands that it runs over [SOAP](https://www.azerothcore.org/wiki/remote-access) (with an
@@ -126,7 +126,9 @@ administrator account, as SOAP requires). Players can't run them, game masters n
 answer one line of JSON:
 
 - `.coinshop list <account id>`: the wallet balance, the account's characters, and every
-  offer with the characters that own it already (`owned`) or can't use it (`cannot`).
+  offer with the characters that own it already (`owned`) or can't use it (`cannot`). The
+  command reads the account's characters from the database on the world thread: cache its
+  answer for a little while rather than calling it on every click.
 - `.coinshop buy <account id> <offer id> <character guid>`: `{"ok":true,"balance":..,"message":..}`,
   or `{"ok":false,"error":..,"message":..}` with error `closed`, `no_offer`, `no_character`,
   `busy` (a character of the account is logging in), `owned`, `cannot` or `balance`. The coins and the order are written in one transaction.
@@ -250,7 +252,8 @@ every row of `data/pages.tsv` and write the SQL again.
   9503200, and creatures 9503201 to 9503209, which are never spawned: each owns one page of
   her stock. `conditions` rows on her gossip options and her stock. Tables
   `mod_boss_coins_source`, `mod_boss_coins_credit` and `mod_boss_coins_shop` (offer ids below
-  1000 are the module's and are rewritten with its SQL; add your own from 1000).
+  1000 are the module's: its SQL keeps them up to date but sets `price`, `sort` and `enabled`
+  only on a new row, so prices you change stay; add your own offers from 1000).
 - Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
   in which each character last got each boss's coins. Table `mod_boss_coins_daily`, the day
   each account last got its daily login coins. Tables `mod_boss_coins_wallet` (balances) and

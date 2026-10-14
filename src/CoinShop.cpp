@@ -14,24 +14,27 @@
  *     {"ok":true,"balance":12,"characters":[{"guid","name","race","class","gender","level",
  *     "online"}],"offers":[{"id","category","name","description","icon","price","owned":[guids],
  *     "cannot":[guids]}]}. `owned`: characters that have it already (an item in their bags,
- *     bank or mail, or the spell it teaches; a service waiting for their next login). `cannot`:
- *     characters of a race or class the item isn't for.
+ *     bank or mail, or the spell it teaches; a service waiting for their next login; an order
+ *     still being written). `cannot`: characters that can't use the item: race, class, level,
+ *     or a skill it needs (riding, for a mount).
  *
  * .coinshop buy <account id> <offer id> <character guid>
  *     {"ok":true,"balance":7,"message":"..."} or {"ok":false,"error":"<code>","message":"..."}.
  *     Codes: closed, no_offer, no_character, busy, owned, cannot, balance. The coins are taken
- *     and the order written in one transaction.
+ *     and the order written in one transaction; the message says why a refusal is one.
  *
  * .coinshop reload     reads mod_boss_coins_shop again (also for game masters in game)
  *
  * Released under the MIT License.
  */
 
+#include "AsyncCallbackProcessor.h"
 #include "BossCoins.h"
 #include "CharacterCache.h"
 #include "Chat.h"
 #include "ChatCommand.h"
 #include "Config.h"
+#include "DBCStores.h"
 #include "DatabaseEnv.h"
 #include "Item.h"
 #include "Log.h"
@@ -40,11 +43,11 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "GameTime.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 
 #include <algorithm>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -75,6 +78,10 @@ namespace
         uint32 count = 1;
         uint8 service = SERVICE_NONE;
         uint32 teaches = 0;     // the spell the item teaches, if it is one that does
+        // what the item asks of the character that uses it
+        uint32 requiredLevel = 0;
+        uint32 requiredSkill = 0;
+        uint32 requiredSkillRank = 0;
     };
 
     struct Character
@@ -87,6 +94,7 @@ namespace
         uint8 level = 0;
         uint32 atLogin = 0;
         Player* online = nullptr;
+        std::unordered_map<uint32, uint16> skills;  // an offline character's, those the offers ask for
     };
 
     // How long a bought item waits in the mailbox, in days.
@@ -103,12 +111,32 @@ namespace
     // Read at startup and by .coinshop reload, both on the world thread, like every reader.
     std::vector<Offer> offers;
 
-    // Orders of the last few minutes, Key(offer, guid) -> when. An order is written by the
-    // database's worker a moment after it is paid, and what an offline character has is read
-    // from the database: a second order right behind the first (a double click, a retry) would
-    // find nothing there yet and pay again.
-    constexpr Seconds RECENT_ORDER = 5min;
-    std::unordered_map<uint64, Seconds> recentOrders;
+    // Orders that are paid for and not yet in the database, Key(offer, guid) -> how many. The
+    // database's worker writes an order a moment after it is paid, and what an offline
+    // character has is read from the database: a second order right behind the first (a double
+    // click, a retry, the character logging out in between) would find nothing there yet and
+    // pay again. An order counts as owned from the moment it is paid until its write is done;
+    // from then on the database has it.
+    std::unordered_map<uint64, uint32> ordersInFlight;
+
+    // The orders' writes, until they are done. Asked on the world thread, every update.
+    AsyncCallbackProcessor<TransactionCallback> orderCommits;
+
+    // Services sold to characters that were offline, guid -> the order, until the character's
+    // next login. A login reads the character's row once, at its start: one that read it before
+    // the order's write landed brings the character into the world without the flag, and its
+    // first save writes the row back without it. A bot of the player's own account logs in that
+    // way too, unseen by the "busy" check. So at the login the flag is put back, if the row has
+    // it by then (it doesn't when the service was used at the character list in between) or the
+    // write hasn't landed yet. Logins can come from map threads (bots), hence the lock.
+    struct ServiceOrder
+    {
+        uint32 flags = 0;
+        uint32 inFlight = 0;
+    };
+
+    std::mutex serviceOrdersLock;
+    std::unordered_map<uint32, ServiceOrder> serviceOrders;
 
     AtLoginFlags ServiceFlag(uint8 service)
     {
@@ -181,13 +209,67 @@ namespace
         return characters;
     }
 
-    bool CanUse(Offer const& offer, Character const& character)
+    // The skills the offers ask for, of the account's offline characters. An online character
+    // is asked directly.
+    void LoadSkills(std::vector<Character>& characters, std::vector<Offer const*> const& wanted)
+    {
+        std::vector<uint32> guids, skills;
+        for (Character const& character : characters)
+            if (!character.online)
+                guids.push_back(character.guid);
+        for (Offer const* offer : wanted)
+            if (offer->requiredSkill && std::find(skills.begin(), skills.end(), offer->requiredSkill) == skills.end())
+                skills.push_back(offer->requiredSkill);
+
+        if (guids.empty() || skills.empty())
+            return;
+
+        if (QueryResult result = CharacterDatabase.Query("SELECT guid, skill, value FROM character_skills WHERE guid IN ({}) AND skill IN ({})",
+            IdList(guids), IdList(skills)))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                uint32 guid = fields[0].Get<uint32>();
+                auto itr = std::find_if(characters.begin(), characters.end(), [guid](Character const& c) { return c.guid == guid; });
+                if (itr != characters.end())
+                    itr->skills[fields[1].Get<uint16>()] = fields[2].Get<uint16>();
+            } while (result->NextRow());
+        }
+    }
+
+    // Why the character can't use the offer's item: its race or class, its level, a skill it
+    // lacks (riding, for a mount). Empty if it can. A mount bought for a character that can't
+    // learn it would only sit in the bags.
+    std::string CannotUse(Offer const& offer, Character const& character)
     {
         if (!offer.item)
-            return true;
+            return "";
 
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(offer.item);
-        return proto && (proto->AllowableClass & (1u << (character.cls - 1))) && (proto->AllowableRace & (1u << (character.race - 1)));
+        if (!proto || !(proto->AllowableClass & (1u << (character.cls - 1))) || !(proto->AllowableRace & (1u << (character.race - 1))))
+            return fmt::format("{} can't use the {}.", character.name, offer.name);
+
+        if (character.level < offer.requiredLevel)
+            return fmt::format("{} needs level {} for the {}.", character.name, offer.requiredLevel, offer.name);
+
+        if (offer.requiredSkill)
+        {
+            uint16 value = 0;
+            if (character.online)
+                value = character.online->GetSkillValue(offer.requiredSkill);
+            else if (auto itr = character.skills.find(offer.requiredSkill); itr != character.skills.end())
+                value = itr->second;
+
+            if (value < offer.requiredSkillRank)
+            {
+                SkillLineEntry const* skill = sSkillLineStore.LookupEntry(offer.requiredSkill);
+                return fmt::format("{} needs {} ({}) for the {}.", character.name,
+                    skill ? skill->name[LOCALE_enUS] : "a skill", offer.requiredSkillRank, offer.name);
+            }
+        }
+
+        return "";
     }
 
     // Which characters already have which offers, as Key(offer, guid). A character in the game
@@ -245,10 +327,6 @@ namespace
             }
         }
 
-        // forget orders that the database has long had
-        Seconds now = GameTime::GetGameTime();
-        std::erase_if(recentOrders, [now](auto const& order) { return order.second + RECENT_ORDER < now; });
-
         for (Offer const* offer : wanted)
         {
             bool anyKnows = false;
@@ -274,7 +352,7 @@ namespace
                 }
 
                 anyKnows |= knows;
-                has |= !character.online && recentOrders.count(Key(offer->id, character.guid));
+                has |= ordersInFlight.count(Key(offer->id, character.guid)) > 0;
                 if (has)
                     owned.insert(Key(offer->id, character.guid));
             }
@@ -404,6 +482,9 @@ void BossCoins::Shop::Load()
                 }
 
                 offer.count = std::min<uint32>(offer.count, proto->GetMaxStackSize());
+                offer.requiredLevel = proto->RequiredLevel;
+                offer.requiredSkill = proto->RequiredSkill;
+                offer.requiredSkillRank = proto->RequiredSkillRank;
                 if (offer.name.empty())
                     offer.name = proto->Name1;
                 for (auto const& spell : proto->Spells)
@@ -452,6 +533,7 @@ public:
         std::vector<Offer const*> all;
         for (Offer const& offer : offers)
             all.push_back(&offer);
+        LoadSkills(characters, all);
         std::unordered_set<uint64> owned = Owned(characters, all);
 
         std::string json = fmt::format("{{\"ok\":true,\"balance\":{},\"characters\":[", Wallet::Balance(account));
@@ -471,7 +553,7 @@ public:
             {
                 if (owned.count(Key(o.id, c.guid)))
                     have.push_back(c.guid);
-                if (!CanUse(o, c))
+                if (!CannotUse(o, c).empty())
                     cannot.push_back(c.guid);
             }
 
@@ -505,9 +587,10 @@ public:
         if (itr == characters.end())
             return Refuse(handler, "no_character", "That character isn't on your account.");
 
+        LoadSkills(characters, { offer });
         Character const& character = *itr;
-        if (!CanUse(*offer, character))
-            return Refuse(handler, "cannot", fmt::format("{} can't use the {}.", character.name, offer->name));
+        if (std::string why = CannotUse(*offer, character); !why.empty())
+            return Refuse(handler, "cannot", why);
 
         if (Owned(characters, { offer }).count(Key(offer->id, character.guid)))
             return Refuse(handler, "owned", offer->service
@@ -520,9 +603,41 @@ public:
                 offer->name, offer->price, Wallet::Balance(account)));
 
         Deliver(*offer, character, trans);
-        CharacterDatabase.CommitTransaction(trans);
-        if (!character.online)
-            recentOrders[Key(offer->id, character.guid)] = GameTime::GetGameTime();
+
+        uint64 key = Key(offer->id, character.guid);
+        ++ordersInFlight[key];
+
+        bool watchLogin = offer->service && !character.online;
+        if (watchLogin)
+        {
+            std::lock_guard<std::mutex> guard(serviceOrdersLock);
+            ServiceOrder& order = serviceOrders[character.guid];
+            order.flags |= ServiceFlag(offer->service);
+            ++order.inFlight;
+        }
+
+        orderCommits.AddCallback(CharacterDatabase.AsyncCommitTransaction(trans)).AfterComplete(
+            [key, account, watchLogin, offerId = offer->id, guid = character.guid, price = offer->price](bool success)
+            {
+                auto itr = ordersInFlight.find(key);
+                if (itr != ordersInFlight.end() && !--itr->second)
+                    ordersInFlight.erase(itr);
+
+                if (watchLogin)
+                {
+                    std::lock_guard<std::mutex> guard(serviceOrdersLock);
+                    if (auto order = serviceOrders.find(guid); order != serviceOrders.end() && order->second.inFlight)
+                        --order->second.inFlight;
+                }
+
+                // The coins went out of the wallet in the same transaction, so the database still
+                // has them; only the balance in memory is short until the next restart.
+                if (!success)
+                    LOG_ERROR("module", "mod-boss-coins: the order of shop offer {} for character {} (account {}, {} coins) "
+                        "couldn't be written; nothing was delivered. The wallet shows {} coins less until the next restart.",
+                        offerId, guid, account, price, price);
+            });
+
         TellPlayer(*offer, character);
 
         LOG_INFO("module", "mod-boss-coins: account {} bought shop offer {} ({}) for {} ({}), {} coins",
@@ -546,7 +661,12 @@ public:
 class BossCoinsShopWorldScript : public WorldScript
 {
 public:
-    BossCoinsShopWorldScript() : WorldScript("BossCoinsShopWorldScript", { WORLDHOOK_ON_AFTER_CONFIG_LOAD }) { }
+    BossCoinsShopWorldScript() : WorldScript("BossCoinsShopWorldScript", { WORLDHOOK_ON_AFTER_CONFIG_LOAD, WORLDHOOK_ON_UPDATE }) { }
+
+    void OnUpdate(uint32 /*diff*/) override
+    {
+        orderCommits.ProcessReadyCallbacks();
+    }
 
     void OnAfterConfigLoad(bool /*reload*/) override
     {
@@ -555,8 +675,53 @@ public:
     }
 };
 
+class BossCoinsShopPlayerScript : public PlayerScript
+{
+public:
+    BossCoinsShopPlayerScript() : PlayerScript("BossCoinsShopPlayerScript", { PLAYERHOOK_ON_LOGIN }) { }
+
+    // A service ordered while the character was offline: see serviceOrders.
+    void OnPlayerLogin(Player* player) override
+    {
+        uint32 guid = player->GetGUID().GetCounter();
+        ServiceOrder order;
+        {
+            std::lock_guard<std::mutex> guard(serviceOrdersLock);
+            auto itr = serviceOrders.find(guid);
+            if (itr == serviceOrders.end())
+                return;
+
+            order = itr->second;
+            serviceOrders.erase(itr);
+        }
+
+        uint32 missing = 0;
+        for (uint8 service = SERVICE_RENAME; service <= SERVICE_CHANGE_FACTION; ++service)
+        {
+            AtLoginFlags flag = ServiceFlag(service);
+            if ((order.flags & flag) && !player->HasAtLoginFlag(flag))
+                missing |= flag;
+        }
+
+        if (!missing)
+            return;
+
+        // Written already: only what the row still has. Not yet: all of it, the write brings it.
+        if (!order.inFlight)
+        {
+            QueryResult result = CharacterDatabase.Query("SELECT at_login FROM characters WHERE guid = {}", guid);
+            missing &= result ? result->Fetch()[0].Get<uint16>() : 0;
+        }
+
+        for (uint8 service = SERVICE_RENAME; service <= SERVICE_CHANGE_FACTION; ++service)
+            if (missing & ServiceFlag(service))
+                player->SetAtLoginFlag(ServiceFlag(service));
+    }
+};
+
 void AddBossCoinsShopScripts()
 {
     new BossCoinsShopCommandScript();
+    new BossCoinsShopPlayerScript();
     new BossCoinsShopWorldScript();
 }

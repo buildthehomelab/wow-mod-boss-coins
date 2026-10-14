@@ -182,7 +182,8 @@ namespace
         uint32 account = player->GetSession()->GetAccountId();
         uint32 balance = Wallet::Balance(account);
 
-        uint32 count = std::min({ wanted, balance, CoinRoom(player) });
+        uint32 room = CoinRoom(player);
+        uint32 count = std::min({ wanted, balance, room });
         if (!count)
         {
             if (!wanted)
@@ -228,6 +229,18 @@ namespace
 
         chat.PSendSysMessage("You take {} {} out of your account wallet. It holds {} now.", count, CoinName(count),
             Wallet::Balance(account));
+
+        // Fewer than asked for: say what stopped the rest.
+        if (count < wanted)
+        {
+            if (count == balance)
+                chat.SendSysMessage("That was all your wallet had.");
+            else if (count == room)
+                chat.PSendSysMessage("A character can't carry more than {} Tarnished Undermine Reals; the rest stay in the wallet.",
+                    sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL)->MaxCount);
+            else
+                chat.SendSysMessage("Your bags had no room for more; the rest stay in the wallet.");
+        }
     }
 
     uint32 ParseCount(char const* code)

@@ -13,8 +13,8 @@ id	category	item	count	service	price	sort	name	description	icon	comment
 108	pet	90207	1	0	10	107		A companion that follows you around. Mailed to the character.		mod-retail-pets: Ashen Panda Backpacker
 109	pet	90208	1	0	10	108		A companion that follows you around. Mailed to the character.		mod-retail-pets: Crimson Panda Backpacker
 110	pet	90209	1	0	10	109		A companion that follows you around. Mailed to the character.		mod-retail-pets: Violet Panda Backpacker
-201	mount	90210	1	0	40	200		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Red Panda
-202	mount	90211	1	0	40	201		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Azure Panda
-203	mount	90212	1	0	40	202		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Ashen Panda
-204	mount	90213	1	0	40	203		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Crimson Panda
-205	mount	90214	1	0	40	204		A mount. Mailed to the character; learning it needs Apprentice Riding.		mod-retail-pets: Great Violet Panda
+201	mount	90210	1	0	40	200		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Red Panda
+202	mount	90211	1	0	40	201		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Azure Panda
+203	mount	90212	1	0	40	202		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Ashen Panda
+204	mount	90213	1	0	40	203		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Crimson Panda
+205	mount	90214	1	0	40	204		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Violet Panda

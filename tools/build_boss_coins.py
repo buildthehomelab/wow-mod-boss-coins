@@ -32,8 +32,9 @@ Both read the same files in data/, so the server and the client can't disagree:
                (mailed, `count` of it) or a `service` (1 rename, 2 customize, 3 race change,
                4 faction change), never both. An empty `name` is the item's or the service's own.
                `icon` is an Interface/Icons file name for the launcher (empty: the category's).
-               Ids below SHOP_OWN_IDS are the module's and are rewritten with its SQL; add your
-               own rows to the table from that id on.
+               Ids below SHOP_OWN_IDS are the module's. Its SQL adds them and keeps what they
+               are up to date, but `price`, `sort` and `enabled` only on a new row: a server's
+               own prices stay. Add your own rows to the table from SHOP_OWN_IDS on.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -343,9 +344,11 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w("-- What the launcher's shop sells, for coins from the account wallet. An offer is an item,\n")
         w("-- mailed to the character it is bought for, or a service the character gets at the\n")
         w("-- character list (`service` 1 rename, 2 customize, 3 race change, 4 faction change). An\n")
-        w("-- offer whose item isn't on the server is left out. Ids below %d are this module's and are\n" % SHOP_OWN_IDS)
-        w("-- rewritten whenever its SQL changes: add your own offers from %d on, they stay. The server\n" % SHOP_OWN_IDS)
-        w("-- reads the table at startup and on .coinshop reload.\n")
+        w("-- offer whose item isn't on the server is left out. Ids below %d are this module's: what\n" % SHOP_OWN_IDS)
+        w("-- they are follows the module, but `price`, `sort` and `enabled` are only set when an offer\n")
+        w("-- is new, so prices you change stay. An offer the module no longer has is removed. Add your\n")
+        w("-- own offers from %d on, they stay. The server reads the table at startup and on\n" % SHOP_OWN_IDS)
+        w("-- .coinshop reload.\n")
         w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (\n")
         w("  `id` INT UNSIGNED NOT NULL,\n")
         w("  `category` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'the launcher groups offers by it: mount, pet, service, ...',\n")
@@ -361,11 +364,15 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
         w("  PRIMARY KEY (`id`)\n")
         w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';\n")
-        w("DELETE FROM `mod_boss_coins_shop` WHERE `id` < %d;\n" % SHOP_OWN_IDS)
+        w("DELETE FROM `mod_boss_coins_shop` WHERE `id` < %d AND `id` NOT IN (%s);\n" % (
+            SHOP_OWN_IDS, id_list(o["id"] for o in shop)))
         w("INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES\n")
         w(",\n".join("(%d, %s, %s, %s, %s, %d, %d, %d, %d, %d, 1, %s)" % (
             o["id"], sql_str(o["category"]), sql_str(o["name"]), sql_str(o["description"]), sql_str(o["icon"]),
-            o["price"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + ";\n")
+            o["price"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + "\n")
+        w("ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), "
+          "`icon` = VALUES(`icon`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), "
+          "`comment` = VALUES(`comment`);\n")
     print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses, %d shop offers" % (
         path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits), len(shop)))
 

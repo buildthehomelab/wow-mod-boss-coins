@@ -1022,9 +1022,11 @@ INSERT IGNORE INTO `mod_boss_coins_credit` (`creature`, `encounter`, `comment`) 
 -- What the launcher's shop sells, for coins from the account wallet. An offer is an item,
 -- mailed to the character it is bought for, or a service the character gets at the
 -- character list (`service` 1 rename, 2 customize, 3 race change, 4 faction change). An
--- offer whose item isn't on the server is left out. Ids below 1000 are this module's and are
--- rewritten whenever its SQL changes: add your own offers from 1000 on, they stay. The server
--- reads the table at startup and on .coinshop reload.
+-- offer whose item isn't on the server is left out. Ids below 1000 are this module's: what
+-- they are follows the module, but `price`, `sort` and `enabled` are only set when an offer
+-- is new, so prices you change stay. An offer the module no longer has is removed. Add your
+-- own offers from 1000 on, they stay. The server reads the table at startup and on
+-- .coinshop reload.
 CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (
   `id` INT UNSIGNED NOT NULL,
   `category` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'the launcher groups offers by it: mount, pet, service, ...',
@@ -1040,7 +1042,7 @@ CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (
   `comment` VARCHAR(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';
-DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000;
+DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205);
 INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES
 (1, 'service', '', 'Pick a new name for the character, at the character list.', '', 20, 0, 1, 1, 10, 1, 'rename'),
 (2, 'service', '', 'Change the character\'s name, gender and looks, at the character list.', '', 20, 0, 1, 2, 20, 1, 'customize'),
@@ -1056,8 +1058,9 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (108, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90207, 1, 0, 107, 1, 'mod-retail-pets: Ashen Panda Backpacker'),
 (109, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90208, 1, 0, 108, 1, 'mod-retail-pets: Crimson Panda Backpacker'),
 (110, 'pet', '', 'A companion that follows you around. Mailed to the character.', '', 10, 90209, 1, 0, 109, 1, 'mod-retail-pets: Violet Panda Backpacker'),
-(201, 'mount', '', 'A mount. Mailed to the character; learning it needs Apprentice Riding.', '', 40, 90210, 1, 0, 200, 1, 'mod-retail-pets: Great Red Panda'),
-(202, 'mount', '', 'A mount. Mailed to the character; learning it needs Apprentice Riding.', '', 40, 90211, 1, 0, 201, 1, 'mod-retail-pets: Great Azure Panda'),
-(203, 'mount', '', 'A mount. Mailed to the character; learning it needs Apprentice Riding.', '', 40, 90212, 1, 0, 202, 1, 'mod-retail-pets: Great Ashen Panda'),
-(204, 'mount', '', 'A mount. Mailed to the character; learning it needs Apprentice Riding.', '', 40, 90213, 1, 0, 203, 1, 'mod-retail-pets: Great Crimson Panda'),
-(205, 'mount', '', 'A mount. Mailed to the character; learning it needs Apprentice Riding.', '', 40, 90214, 1, 0, 204, 1, 'mod-retail-pets: Great Violet Panda');
+(201, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90210, 1, 0, 200, 1, 'mod-retail-pets: Great Red Panda'),
+(202, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90211, 1, 0, 201, 1, 'mod-retail-pets: Great Azure Panda'),
+(203, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90212, 1, 0, 202, 1, 'mod-retail-pets: Great Ashen Panda'),
+(204, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90213, 1, 0, 203, 1, 'mod-retail-pets: Great Crimson Panda'),
+(205, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90214, 1, 0, 204, 1, 'mod-retail-pets: Great Violet Panda')
+ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), `icon` = VALUES(`icon`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), `comment` = VALUES(`comment`);
