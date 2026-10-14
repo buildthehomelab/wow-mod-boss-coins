@@ -6,7 +6,7 @@ instance when they die, and a goblin in Booty Bay who trades set pieces, craftin
 for it. It follows the coin of the same name in World of Warcraft: Season of Discovery.
 
 The point is bad luck protection. A boss that doesn't drop your piece still moves you towards
-buying it.
+buying it. And a couple of coins a day just for logging in, so everyone saves up a little.
 
 ## Earning coins
 
@@ -42,6 +42,17 @@ buying it.
   to their other characters, of either faction, and the mail arrives at once. A character
   that already has 250 can't take more out of the mailbox.
 - With full bags the coins come by mail.
+
+### Daily login coins
+
+- **2 coins a day per account** for logging in, after the daily quest reset (06:00 server
+  time). The first character of the account in the world gets them; the account's other
+  characters get nothing more that day. Per account, not per character, because the coins can
+  be mailed between the account's characters anyway.
+- A player who is already in the world at the reset gets the new day's coins then.
+- A character that can't hold both coins (it has 249 or 250) gets none and is told so. The coins wait for the account's
+  next character, or for this one after it has spent some and logs in again.
+- Bots get none. `BossCoins.DailyLogin.Coins` sets the number; `0` switches it off.
 
 ## Spending coins
 
@@ -115,10 +126,11 @@ Give players the new patch in place of the old one. Needs Python 3 and
 
 | Setting | Default | |
 | --- | --- | --- |
-| `BossCoins.Enable` | `1` | With `0` no boss gives coins. Pix Xizzix keeps trading |
+| `BossCoins.Enable` | `1` | With `0` no boss gives coins and there are no daily login coins. Pix Xizzix keeps trading |
 | `BossCoins.MinBossLevel` | `55` | A boss below this level gives nothing, unless it has a row of its own in the table below |
+| `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
 
-Both reload with `.reload config`.
+All three reload with `.reload config`.
 
 ### Which bosses give coins
 
@@ -184,7 +196,8 @@ every row of `data/pages.tsv` and write the SQL again.
   her stock. `conditions` rows on her gossip options and her stock. Tables
   `mod_boss_coins_source` and `mod_boss_coins_credit`.
 - Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
-  in which each character last got each boss's coins.
+  in which each character last got each boss's coins. Table `mod_boss_coins_daily`, the day
+  each account last got its daily login coins.
 - This module's id ranges: item 90410, `ItemExtendedCost` 90411 to 90429, and 9503200 to
   9503299 for everything else. No stock rows are changed.
 
@@ -202,6 +215,8 @@ each on its own database. The characters file deletes every coin players own.
   instance after `.instance unbind` does. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
   is level 55 or higher, and that the worldserver log has the `mod-boss-coins:` lines at
   startup.
+- **No daily login coins:** the account already had them today, on another character, or the
+  character has 249 or 250. The day starts at the daily quest reset, not at midnight.
 - **Pix Xizzix only offers the dungeon sets:** the other pages wait for Ragnaros, Onyxia,
   Nefarian, Hakkar, Ossirian, C'Thun and Kel'Thuzad.
 - **A page is empty:** she shows a class its own pieces. Game masters see the same as players.
@@ -225,6 +240,9 @@ Category: Dungeons & Raids
   shoulders and chests from her. Players who have defeated Hakkar or Ossirian can buy their class's **Zul'Gurub** or
   **Ruins of Ahn'Qiraj** set. Players who have defeated C'Thun can buy every Tier 2.5 piece, and players who have
   defeated Kel'Thuzad every Tier 3 piece, the ring included.
+
+- Every account now gets **2 Tarnished Undermine Reals a day** for logging in, after the
+  daily reset. The first character you log in that day gets them.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.

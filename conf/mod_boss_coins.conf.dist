@@ -9,9 +9,10 @@
 
 #
 #    BossCoins.Enable
-#        Description: Master switch. With 0 no boss gives coins. Pix Xizzix, her stock and the
-#                     coins players already have are rows in the databases and stay: she keeps
-#                     trading. Remove those with the module's uninstall SQL.
+#        Description: Master switch. With 0 no boss gives coins, and nobody gets the daily
+#                     login coins. Pix Xizzix, her stock and the coins players already have
+#                     are rows in the databases and stay: she keeps trading. Remove those with
+#                     the module's uninstall SQL.
 #        Default:     1
 #
 
@@ -27,3 +28,15 @@ BossCoins.Enable = 1
 #
 
 BossCoins.MinBossLevel = 55
+
+#
+#    BossCoins.DailyLogin.Coins
+#        Description: Coins an account gets once a day for logging in, after the daily quest
+#                     reset. The first character of the account in the world gets them,
+#                     including one already in the world when the reset happens. A character
+#                     that can't hold them all leaves them for the account's next one. 0
+#                     switches it off.
+#        Default:     2
+#
+
+BossCoins.DailyLogin.Coins = 2
