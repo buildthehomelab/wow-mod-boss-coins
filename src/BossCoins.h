@@ -58,7 +58,8 @@ namespace BossCoins
     uint32 CoinRoom(Player* player);
 
     // The account wallet (CoinWallet.cpp): coins that belong to an account rather than to a
-    // character's bags, spent in the launcher's shop. Only ever changed on the world thread.
+    // character's bags, spent in the launcher's shop. Any thread may change a balance (boss kills
+    // pay on the map threads): each change is checked and made under one lock.
     namespace Wallet
     {
         uint32 Balance(uint32 account);
@@ -67,11 +68,12 @@ namespace BossCoins
         constexpr uint32 MAX_BALANCE = 2147483647;
 
         // `guid` is the character the change came from or went to, 0 for none. `reason` is a
-        // short word for the ledger: daily, deposit, withdraw, shop, gm. `trans`: a transaction
-        // of the caller's to write the change in, with what the coins paid for or came from;
-        // none, and the change is written on its own.
-        void Add(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer = 0,
-            CharacterDatabaseTransaction trans = nullptr);
+        // short word for the ledger: boss, daily, deposit, withdraw, shop, gm. `trans`: a
+        // transaction of the caller's to write the change in, with what the coins paid for or
+        // came from; none, and the change is written on its own. Returns the coins added, fewer
+        // than asked when the wallet is full; `balance` gets the balance after.
+        uint32 Add(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer = 0,
+            CharacterDatabaseTransaction trans = nullptr, uint32* balance = nullptr);
 
         // False, and nothing taken, when the account has fewer coins than that.
         bool Take(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer = 0,

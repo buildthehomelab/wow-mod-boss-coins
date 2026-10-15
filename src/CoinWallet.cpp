@@ -2,11 +2,11 @@
  * mod-boss-coins: the account wallet.
  *
  * Coins that belong to an account instead of a character's bags. The launcher's shop spends
- * from it (CoinShop.cpp), the daily login coins go into it, and Pix Xizzix moves coins between
- * a character's bags and the wallet: "put my coins in my wallet" takes every coin the character
- * carries (bags and bank), "take coins out" asks how many. Bag coins are still what her own
- * stock costs. The wallet has no cap; a character's bags still hold at most the coin's own
- * maximum.
+ * from it (CoinShop.cpp), the boss coins and the daily login coins go into it, and Pix Xizzix
+ * moves coins between a character's bags and the wallet: "put my coins in my wallet" takes every
+ * coin the character carries (bags and bank), "take coins out" asks how many. Bag coins are
+ * still what her own stock costs. The wallet has no cap; a character's bags still hold at most
+ * the coin's own maximum.
  *
  *   characters table mod_boss_coins_wallet   account -> coins, the balance
  *   characters table mod_boss_coins_ledger   every change, with why and from which character
@@ -47,8 +47,9 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
-    // account -> coins. Changed on the world thread only; the lock is for the odd reader
-    // elsewhere.
+    // account -> coins. Boss coins come in from the map threads, several at once, and the rest
+    // of the changes happen on the world thread: every change is checked and made under the
+    // lock, in Change, so any thread may make one.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
 
@@ -62,18 +63,30 @@ namespace
             GameTime::GetGameTime().count(), account, guid, change, balance, reason, offer);
     }
 
-    // `trans` is the caller's, to commit with the bags the coins came out of or went into; with
-    // none the change is committed on its own.
-    void Change(uint32 account, uint32 guid, int64 change, std::string_view reason, uint32 offer,
-        CharacterDatabaseTransaction trans)
+    // Coins in (`change` above 0), stopping at the most a wallet holds, or out (below 0), all of
+    // them or none when the wallet has fewer. Returns the change made, 0 for none; `balanceAfter`
+    // gets the balance it left. `trans` is the caller's, to commit with the bags the coins came
+    // out of or went into; with none the change is committed on its own.
+    int64 Change(uint32 account, uint32 guid, int64 change, std::string_view reason, uint32 offer,
+        CharacterDatabaseTransaction trans, uint32* balanceAfter = nullptr)
     {
         uint32 balance;
         {
             std::lock_guard<std::mutex> guard(walletLock);
             uint32& coins = balances[account];
+            if (change > 0)
+                change = std::min<int64>(change, int64(Wallet::MAX_BALANCE) - coins);
+            else if (-change > int64(coins))
+                change = 0;
+
             coins = uint32(int64(coins) + change);
             balance = coins;
         }
+
+        if (balanceAfter)
+            *balanceAfter = balance;
+        if (!change)
+            return 0;
 
         bool own = !trans;
         if (own)
@@ -83,6 +96,7 @@ namespace
 
         if (own)
             CharacterDatabase.CommitTransaction(trans);
+        return change;
     }
 }
 
@@ -93,23 +107,16 @@ uint32 BossCoins::Wallet::Balance(uint32 account)
     return itr != balances.end() ? itr->second : 0;
 }
 
-void BossCoins::Wallet::Add(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer,
-    CharacterDatabaseTransaction trans)
+uint32 BossCoins::Wallet::Add(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer,
+    CharacterDatabaseTransaction trans, uint32* balance)
 {
-    coins = std::min(coins, MAX_BALANCE - Balance(account));
-    if (coins)
-        Change(account, guid, int64(coins), reason, offer, trans);
+    return uint32(Change(account, guid, int64(coins), reason, offer, trans, balance));
 }
 
 bool BossCoins::Wallet::Take(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer,
     CharacterDatabaseTransaction trans)
 {
-    if (Balance(account) < coins)
-        return false;
-
-    if (coins)
-        Change(account, guid, -int64(coins), reason, offer, trans);
-    return true;
+    return !coins || Change(account, guid, -int64(coins), reason, offer, trans);
 }
 
 void BossCoins::Wallet::Load()
@@ -155,25 +162,36 @@ namespace
             return;
         }
 
-        if (before > Wallet::MAX_BALANCE - Wallet::Balance(account))
+        // Into the wallet first, as many as it has room for (boss coins can come in on another
+        // thread at any moment), and only those out of the bags: no coin leaves the bags that the
+        // wallet didn't take.
+        uint32 guid = player->GetGUID().GetCounter();
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+        uint32 added = Wallet::Add(account, guid, before, "deposit", 0, trans);
+        if (!added)
         {
             chat.SendSysMessage("Your account wallet is full.");
             return;
         }
 
-        player->DestroyItemCount(ITEM_TARNISHED_UNDERMINE_REAL, before, true);
+        player->DestroyItemCount(ITEM_TARNISHED_UNDERMINE_REAL, added, true);
         uint32 after = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
         uint32 moved = before > after ? before - after : 0;
+
+        // Fewer left the bags than the wallet took: it gives the rest back.
+        if (moved < added)
+            Wallet::Take(account, guid, added - moved, "deposit", 0, trans);
+
+        if (moved)
+            player->SaveInventoryAndGoldToDB(trans);
+        CharacterDatabase.CommitTransaction(trans);
         if (!moved)
             return;
 
-        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
-        Wallet::Add(account, player->GetGUID().GetCounter(), moved, "deposit", 0, trans);
-        player->SaveInventoryAndGoldToDB(trans);
-        CharacterDatabase.CommitTransaction(trans);
-
         chat.PSendSysMessage("You put {} {} in your account wallet. It now holds {}.", moved, CoinName(moved),
             Wallet::Balance(account));
+        if (added < before)
+            chat.SendSysMessage("Your account wallet is full; the rest stay with you.");
     }
 
     void Withdraw(Player* player, uint32 wanted)
@@ -341,12 +359,8 @@ public:
 
         if (coins > 0)
         {
-            if (uint32(coins) > Wallet::MAX_BALANCE - Wallet::Balance(account.GetID()))
-            {
-                handler->SendErrorMessage("A wallet holds at most {} coins.", Wallet::MAX_BALANCE);
-                return false;
-            }
-            Wallet::Add(account.GetID(), 0, uint32(coins), "gm");
+            if (Wallet::Add(account.GetID(), 0, uint32(coins), "gm") < uint32(coins))
+                handler->PSendSysMessage("A wallet holds at most {} coins.", Wallet::MAX_BALANCE);
         }
         else if (!Wallet::Take(account.GetID(), 0, uint32(-int64(coins)), "gm"))
         {

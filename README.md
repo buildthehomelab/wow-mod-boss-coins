@@ -30,8 +30,9 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
 | Dire Maul | 1 per boss | 16, all three wings |
 
 - **Everyone in the instance gets their own coins** when the boss dies, straight into their
-  bags. The dead get theirs too, as long as they are still inside. There is nothing to loot and
-  nothing to roll for.
+  **account wallet** (see [The wallet and the shop](#the-wallet-and-the-shop)). The dead get
+  theirs too, as long as they are still inside. There is nothing to loot and nothing to roll
+  for.
 - **Once per boss.** A raid boss pays each character once per lockout: kill it again after the
   raid has reset and it pays again, whatever the hour. A dungeon boss pays once until the next
   daily quest reset, so resetting a dungeon and running it again gives nothing the second time.
@@ -40,12 +41,12 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
   character off a lockout: keep mod-playerbots' `Playerbots.ResetInstanceIdForAltBots` at 0,
   or players can do it for their own alts.
 - **Bots get none.** Only players with a game client count.
-- A character can have **250** coins, counting the bank and the mailbox. Coins over that are
-  lost.
+- With `BossCoins.BossKills.ToWallet = 0` the coins go into the bags instead. A character
+  can have **250** coins, counting the bank and the mailbox. Coins over that are lost, and with
+  full bags the coins come by mail.
 - **Coins are bound to the account.** They can't be traded or sold, but a player can mail them
   to their other characters, of either faction, and the mail arrives at once. A character
   that already has 250 can't take more out of the mailbox.
-- With full bags the coins come by mail.
 
 ### Daily login coins
 
@@ -91,9 +92,8 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
 
 Every account has a coin wallet. It has no cap (a character's bags hold 250 at most).
 
-- **In:** the daily login coins, and Pix Xizzix's option *Put the coins I carry in my account
-  wallet*, which takes every coin the character has in bags and bank. Boss coins still go into
-  the bags.
+- **In:** the boss coins, the daily login coins, and Pix Xizzix's option *Put the coins I
+  carry in my account wallet*, which takes every coin the character has in bags and bank.
 - **Out:** her option *Take coins out of my account wallet* asks how many, and gives as many
   as the bags and the 250 cap have room for. Her own stock is paid with bag coins, as before.
   And the shop.
@@ -184,6 +184,7 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | --- | --- | --- |
 | `BossCoins.Enable` | `1` | With `0` no boss gives coins and there are no daily login coins. Pix Xizzix keeps trading |
 | `BossCoins.MinBossLevel` | `55` | A boss below this level gives nothing, unless it has a row of its own in the table below |
+| `BossCoins.BossKills.ToWallet` | `1` | `1`: a boss's coins go into the account wallet. `0`: into the bags |
 | `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
 | `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
 | `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |
@@ -274,7 +275,8 @@ each on its own database. The characters file deletes every coin players own, wa
   have the patch, or has an older copy of it.
 - **A boss gave nothing:** a raid boss pays a character once per lockout, a dungeon boss once
   a day. A boss that a game master respawns in the same raid instance doesn't pay again; a new
-  instance after `.instance unbind` does. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
+  instance after `.instance unbind` does. The coins are in the account wallet, not the bags:
+  look in `.wallet`. Otherwise check that the instance has a row in `mod_boss_coins_source`, that the boss
   is level 55 or higher, and that the worldserver log has the `mod-boss-coins:` lines at
   startup.
 - **No daily login coins:** the account already had them today, on another character (look in
@@ -297,6 +299,10 @@ Category: Dungeons & Raids
   **Blackrock Depths**, **Blackrock Spire**, **Scholomance**, **Stratholme** and **Dire Maul**
   give them too. A raid boss gives a character its coins once per lockout, a dungeon boss once
   per day.
+- Boss Reals now go straight into your **account wallet**, like the daily login Reals, so
+  every character on your account saves towards the same pile and there is no 250 cap. Type
+  `.wallet` to see it. Spend them in the launcher's shop, or take them out at Pix Xizzix to buy
+  from her.
 - **Pix Xizzix** has set up shop in Booty Bay. She trades Dungeon Set 1 pieces for Reals, and
   Tier 1 pieces, Tier 2 legs, **Core Leather**, **Lava Cores**, **Fiery Cores** and flask
   recipes to players who have defeated Ragnaros. Players who have defeated Onyxia can buy their
