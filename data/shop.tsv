@@ -18,3 +18,4 @@ id	category	item	count	service	price	sort	name	description	icon	comment
 203	mount	90212	1	0	40	202		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Ashen Panda
 204	mount	90213	1	0	40	203		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Crimson Panda
 205	mount	90214	1	0	40	204		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Great Violet Panda
+206	mount	90215	1	0	0	205		A mount, mailed to the character. Free, for characters with Apprentice Riding. It flies where flying mounts can, and a druid who knows it has it as a Flight Form look too.		mod-retail-pets: Whoofle Bramblewing
