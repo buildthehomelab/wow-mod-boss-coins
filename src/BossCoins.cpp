@@ -249,14 +249,13 @@ namespace
         }
     }
 
-    // A boss's coins into the account's wallet, which has no cap and no bags to fill.
-    void CoinsToWallet(Player* player, uint32 count)
+    // Coins into the player's account wallet, which has no cap and no bags to fill. Returns the
+    // balance after.
+    uint32 ToWallet(Player* player, uint32 count, std::string_view reason)
     {
-        uint32 account = player->GetSession()->GetAccountId();
-        Wallet::Add(account, player->GetGUID().GetCounter(), count, "boss");
-        ChatHandler(player->GetSession()).PSendSysMessage("{} {} added to your account wallet, which now holds {}. Type .wallet "
-            "to see it, spend them in the launcher's shop, or take them out at Pix Xizzix in Booty Bay.",
-            count, CoinName(count), Wallet::Balance(account));
+        uint32 balance = 0;
+        Wallet::Add(player->GetSession()->GetAccountId(), player->GetGUID().GetCounter(), count, reason, 0, nullptr, &balance);
+        return balance;
     }
 
     // The boss is dead: its coins to every real player in the instance who hasn't had them this
@@ -280,6 +279,11 @@ namespace
                 return;
         }
 
+        // No coin item (the module's world SQL isn't applied): nothing to pay, into the bags or
+        // the wallet.
+        if (!sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL))
+            return;
+
         // A raid boss that pays also saves the players to this instance, or it wouldn't be
         // theirs for the lockout and another one could pay them again. The core does it itself
         // for a boss that dies. Majordomo Executus surrenders.
@@ -294,7 +298,8 @@ namespace
                 if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
                 {
                     if (config.bossToWallet)
-                        CoinsToWallet(player, itr->second);
+                        ChatHandler(player->GetSession()).PSendSysMessage("{} {} into your account wallet (.wallet), which now holds {}.",
+                            itr->second, CoinName(itr->second), ToWallet(player, itr->second, "boss"));
                     else
                         GiveCoins(player, itr->second);
                 }
@@ -339,10 +344,10 @@ namespace
 
         if (toWallet)
         {
-            Wallet::Add(account, player->GetGUID().GetCounter(), config.dailyLoginCoins, "daily");
+            uint32 balance = ToWallet(player, config.dailyLoginCoins, "daily");
             ChatHandler(player->GetSession()).PSendSysMessage("Daily login: {} {} added to your account wallet, which now holds {}. "
                 "Spend them in the launcher's shop. Come back after the next daily reset for more.",
-                config.dailyLoginCoins, CoinName(config.dailyLoginCoins), Wallet::Balance(account));
+                config.dailyLoginCoins, CoinName(config.dailyLoginCoins), balance);
             return;
         }
 
