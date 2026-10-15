@@ -4,7 +4,8 @@
  * What the shop sells is world table mod_boss_coins_shop, a row per offer: an item that is
  * mailed to the character it is bought for (a mount, a companion), or a service that the
  * character gets at its next login (a new name, new looks, another race, the other faction).
- * Prices are in coins from the account wallet (CoinWallet.cpp).
+ * Prices are in coins from the account wallet (CoinWallet.cpp). A price of 0 is a free offer:
+ * the same rules (one per character, not for one that has it already), and no coins move.
  *
  * The launcher talks to the portal, and the portal to these two commands, over SOAP. They are
  * console commands: a player, a game master too, can't run them in game. Both answer one line
@@ -463,10 +464,10 @@ void BossCoins::Shop::Load()
             offer.count = std::max<uint32>(fields[7].Get<uint8>(), 1);
             offer.service = fields[8].Get<uint8>();
 
-            if (!offer.price || (offer.item != 0) == (offer.service != SERVICE_NONE)
+            if ((offer.item != 0) == (offer.service != SERVICE_NONE)
                 || (offer.service && ServiceFlag(offer.service) == AT_LOGIN_NONE))
             {
-                LOG_ERROR("server.loading", "mod-boss-coins: shop offer {} needs a price and either an item or a service (1-4); skipped", offer.id);
+                LOG_ERROR("server.loading", "mod-boss-coins: shop offer {} needs either an item or a service (1-4); skipped", offer.id);
                 ++skipped;
                 continue;
             }

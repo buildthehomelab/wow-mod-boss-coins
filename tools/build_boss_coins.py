@@ -34,7 +34,9 @@ Both read the same files in data/, so the server and the client can't disagree:
                `icon` is an Interface/Icons file name for the launcher (empty: the category's).
                Ids below SHOP_OWN_IDS are the module's. Its SQL adds them and keeps what they
                are up to date, but `price`, `sort` and `enabled` only on a new row: a server's
-               own prices stay. Add your own rows to the table from SHOP_OWN_IDS on.
+               own prices stay. A `price` of 0 is a free offer: still one per character, and
+               not for a character that already has it. Add your own rows to the table from
+               SHOP_OWN_IDS on.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -186,8 +188,8 @@ def load():
             sys.exit("shop.tsv: id %d is listed twice or isn't below %d" % (offer["id"], SHOP_OWN_IDS))
         if bool(offer["item"]) == bool(offer["service"]) or (offer["service"] and offer["service"] not in SHOP_SERVICES):
             sys.exit("shop.tsv: offer %d needs either an item or a service (1-4)" % offer["id"])
-        if offer["price"] <= 0 or not 0 < offer["count"] < 256:
-            sys.exit("shop.tsv: offer %d needs a price and a count of 1-255" % offer["id"])
+        if offer["price"] < 0 or not 0 < offer["count"] < 256:
+            sys.exit("shop.tsv: offer %d needs a price (0 = free) and a count of 1-255" % offer["id"])
         shop.append(offer)
     return costs, list(pages.values()), sources, credits, shop
 

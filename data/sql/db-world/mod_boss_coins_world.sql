@@ -1042,7 +1042,7 @@ CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (
   `comment` VARCHAR(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';
-DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205);
+DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205, 206);
 INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES
 (1, 'service', '', 'Pick a new name for the character, at the character list.', '', 20, 0, 1, 1, 10, 1, 'rename'),
 (2, 'service', '', 'Change the character\'s name, gender and looks, at the character list.', '', 20, 0, 1, 2, 20, 1, 'customize'),
@@ -1062,5 +1062,6 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (202, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90211, 1, 0, 201, 1, 'mod-retail-pets: Great Azure Panda'),
 (203, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90212, 1, 0, 202, 1, 'mod-retail-pets: Great Ashen Panda'),
 (204, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90213, 1, 0, 203, 1, 'mod-retail-pets: Great Crimson Panda'),
-(205, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90214, 1, 0, 204, 1, 'mod-retail-pets: Great Violet Panda')
+(205, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 40, 90214, 1, 0, 204, 1, 'mod-retail-pets: Great Violet Panda'),
+(206, 'mount', '', 'A mount, mailed to the character. Free, for characters with Apprentice Riding. It flies where flying mounts can, and a druid who knows it has it as a Flight Form look too.', '', 0, 90215, 1, 0, 205, 1, 'mod-retail-pets: Whoofle Bramblewing')
 ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), `icon` = VALUES(`icon`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), `comment` = VALUES(`comment`);

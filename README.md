@@ -114,11 +114,13 @@ list. As shipped:
 | Faction Change (the mailbox must be empty) | 75 |
 | The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
 | Its five Great Panda mounts | 40 each |
+| Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
 
 An item that isn't on the server is left out, so the pandas only show with that module
 installed. A character that already has an item (in bags, bank or mail, or the spell it
 teaches), or has the service waiting, isn't sold it again. Neither is a character that can't
-use the item: its race or class, its level, or a skill it needs (a mount needs riding).
+use the item: its race or class, its level, or a skill it needs (a mount needs riding). A
+price of 0 makes an offer free, with the same rules: one per character, and no coins move.
 
 There is no shop window in the game. A launcher or website shows it, through two console
 commands that it runs over [SOAP](https://www.azerothcore.org/wiki/remote-access) (with an
