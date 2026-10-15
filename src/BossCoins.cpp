@@ -2,9 +2,10 @@
  * mod-boss-coins: Tarnished Undermine Reals.
  *
  * A boss that dies gives every real player in its instance a few coins (item 90410), straight
- * into their bags: no loot roll, and nothing for whoever opens the corpse to forget. The coins
- * are spent at Pix Xizzix in Booty Bay, who is data: the module's SQL. This file is the giving,
- * and one check on the buying that the data can't make.
+ * into their account's wallet (CoinWallet.cpp), or with BossCoins.BossKills.ToWallet off into
+ * their bags: no loot roll, and nothing for whoever opens the corpse to forget. The coins are
+ * spent in the launcher's shop and at Pix Xizzix in Booty Bay, who is data: the module's SQL.
+ * This file is the giving, and one check on the buying that the data can't make.
  *
  *   which bosses    world table mod_boss_coins_source: a row per instance map, or per boss
  *   what a boss is  whatever the core credits as a dungeon encounter (instance_encounters), so
@@ -99,6 +100,7 @@ namespace
         uint32 minBossLevel = 55;
         uint32 dailyLoginCoins = 2;
         bool dailyToWallet = true;
+        bool bossToWallet = true;
     };
 
     Config config;
@@ -247,6 +249,16 @@ namespace
         }
     }
 
+    // A boss's coins into the account's wallet, which has no cap and no bags to fill.
+    void CoinsToWallet(Player* player, uint32 count)
+    {
+        uint32 account = player->GetSession()->GetAccountId();
+        Wallet::Add(account, player->GetGUID().GetCounter(), count, "boss");
+        ChatHandler(player->GetSession()).PSendSysMessage("{} {} added to your account wallet, which now holds {}. Type .wallet "
+            "to see it, spend them in the launcher's shop, or take them out at Pix Xizzix in Booty Bay.",
+            count, CoinName(count), Wallet::Balance(account));
+    }
+
     // The boss is dead: its coins to every real player in the instance who hasn't had them this
     // period. `source` is the creature the death or the core's credit came from.
     void PayBoss(Map* map, uint32 encounterId, Unit* source)
@@ -280,7 +292,12 @@ namespace
         for (MapReference const& ref : map->GetPlayers())
             if (Player* player = ref.GetSource())
                 if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
-                    GiveCoins(player, itr->second);
+                {
+                    if (config.bossToWallet)
+                        CoinsToWallet(player, itr->second);
+                    else
+                        GiveCoins(player, itr->second);
+                }
     }
 
     // The account's coins for the day, if nobody on it has had them yet. Into the account's
@@ -605,9 +622,11 @@ public:
         config.minBossLevel = sConfigMgr->GetOption<uint32>("BossCoins.MinBossLevel", 55);
         config.dailyLoginCoins = sConfigMgr->GetOption<uint32>("BossCoins.DailyLogin.Coins", 2);
         config.dailyToWallet = sConfigMgr->GetOption<bool>("BossCoins.DailyLogin.ToWallet", true);
+        config.bossToWallet = sConfigMgr->GetOption<bool>("BossCoins.BossKills.ToWallet", true);
 
-        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up, {} coin(s) a day for logging in, into the {}",
-            config.enabled ? "enabled" : "disabled", config.minBossLevel, config.dailyLoginCoins,
+        LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up into the {}, {} coin(s) a day for logging in, "
+            "into the {}", config.enabled ? "enabled" : "disabled", config.minBossLevel,
+            config.bossToWallet ? "account wallet" : "bags", config.dailyLoginCoins,
             config.dailyToWallet ? "account wallet" : "bags");
     }
 

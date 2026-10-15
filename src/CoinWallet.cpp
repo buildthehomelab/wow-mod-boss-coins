@@ -2,11 +2,11 @@
  * mod-boss-coins: the account wallet.
  *
  * Coins that belong to an account instead of a character's bags. The launcher's shop spends
- * from it (CoinShop.cpp), the daily login coins go into it, and Pix Xizzix moves coins between
- * a character's bags and the wallet: "put my coins in my wallet" takes every coin the character
- * carries (bags and bank), "take coins out" asks how many. Bag coins are still what her own
- * stock costs. The wallet has no cap; a character's bags still hold at most the coin's own
- * maximum.
+ * from it (CoinShop.cpp), the boss coins and the daily login coins go into it, and Pix Xizzix
+ * moves coins between a character's bags and the wallet: "put my coins in my wallet" takes every
+ * coin the character carries (bags and bank), "take coins out" asks how many. Bag coins are
+ * still what her own stock costs. The wallet has no cap; a character's bags still hold at most
+ * the coin's own maximum.
  *
  *   characters table mod_boss_coins_wallet   account -> coins, the balance
  *   characters table mod_boss_coins_ledger   every change, with why and from which character
@@ -47,8 +47,9 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
-    // account -> coins. Changed on the world thread only; the lock is for the odd reader
-    // elsewhere.
+    // account -> coins. Taken out on the world thread only. Boss coins come in from the map
+    // threads, several at once, hence the lock: a balance only ever grows behind the world
+    // thread's back, so what it checked before taking coins out still holds.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
 
@@ -63,7 +64,7 @@ namespace
     }
 
     // `trans` is the caller's, to commit with the bags the coins came out of or went into; with
-    // none the change is committed on its own.
+    // none the change is committed on its own. Coins in stop at the most a wallet holds.
     void Change(uint32 account, uint32 guid, int64 change, std::string_view reason, uint32 offer,
         CharacterDatabaseTransaction trans)
     {
@@ -71,6 +72,11 @@ namespace
         {
             std::lock_guard<std::mutex> guard(walletLock);
             uint32& coins = balances[account];
+            if (change > 0)
+                change = std::min<int64>(change, int64(Wallet::MAX_BALANCE) - coins);
+            if (!change)
+                return;
+
             coins = uint32(int64(coins) + change);
             balance = coins;
         }
@@ -96,9 +102,7 @@ uint32 BossCoins::Wallet::Balance(uint32 account)
 void BossCoins::Wallet::Add(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer,
     CharacterDatabaseTransaction trans)
 {
-    coins = std::min(coins, MAX_BALANCE - Balance(account));
-    if (coins)
-        Change(account, guid, int64(coins), reason, offer, trans);
+    Change(account, guid, int64(coins), reason, offer, trans);
 }
 
 bool BossCoins::Wallet::Take(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer,

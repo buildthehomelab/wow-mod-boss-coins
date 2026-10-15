@@ -30,6 +30,17 @@ BossCoins.Enable = 1
 BossCoins.MinBossLevel = 55
 
 #
+#    BossCoins.BossKills.ToWallet
+#        Description: Where a boss's coins go. 1: into the account wallet of every real
+#                     player in the instance, which the launcher's shop spends from and Pix
+#                     Xizzix pays out of; no cap, no bags to fill. 0: into their bags, up to
+#                     the coin's cap of 250 (more is lost), and by mail when the bags are full.
+#        Default:     1
+#
+
+BossCoins.BossKills.ToWallet = 1
+
+#
 #    BossCoins.DailyLogin.Coins
 #        Description: Coins an account gets once a day for logging in, after the daily quest
 #                     reset. The first character of the account in the world gets them,
