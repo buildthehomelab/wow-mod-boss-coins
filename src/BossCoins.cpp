@@ -599,19 +599,56 @@ public:
     // list to this player. For Pix Xizzix's pages it has to: the list a session remembers
     // survives a switch to another character, and a made-up packet can name any vendor. So a
     // purchase from one of her pages must name her, and she must offer the page right now.
-    void OnPlayerBeforeBuyItemFromVendor(Player* player, ObjectGuid vendorguid, uint32 /*vendorslot*/, uint32& item,
-        uint8 /*count*/, uint8 /*bag*/, uint8 /*slot*/) override
+    void OnPlayerBeforeBuyItemFromVendor(Player* player, ObjectGuid vendorguid, uint32 vendorslot, uint32& item,
+        uint8 count, uint8 /*bag*/, uint8 /*slot*/) override
     {
         uint32 page = player->GetSession()->GetCurrentVendor();
         if (page <= NPC_PIX_XIZZIX || page > NPC_PIX_XIZZIX_LAST_PAGE)
             return;
 
         Creature* pix = player->GetNPCIfCanInteractWith(vendorguid, UNIT_NPC_FLAG_VENDOR);
-        if (pix && pix->GetEntry() == NPC_PIX_XIZZIX && OffersPage(player, pix, page))
+        if (!pix || pix->GetEntry() != NPC_PIX_XIZZIX || !OffersPage(player, pix, page))
+        {
+            player->SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, item, 0);
+            item = 0;   // the core stops the purchase
+            return;
+        }
+
+        PayShortfallFromWallet(player, page, vendorslot, item, count);
+    }
+
+    // Her prices are in bag coins: the core checks the bags (not the bank) for the price right
+    // after this hook, and takes it from them. Coins in the account wallet count too: when the
+    // bags are short, she moves what is missing out of the wallet into them first. All of it or
+    // nothing, so a purchase the wallet can't cover leaves the coins where they were. The core's
+    // own checks still follow; one that fails after this (bags too full for the item) leaves the
+    // moved coins in the bags.
+    static void PayShortfallFromWallet(Player* player, uint32 page, uint32 vendorslot, uint32 item, uint8 count)
+    {
+        VendorItemData const* stock = sObjectMgr->GetNpcVendorItemList(page);
+        VendorItem const* stocked = stock ? stock->GetItem(vendorslot) : nullptr;
+        if (!stocked || stocked->item != item || !stocked->ExtendedCost)
             return;
 
-        player->SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, item, 0);
-        item = 0;   // the core stops the purchase
+        ItemExtendedCostEntry const* cost = sItemExtendedCostStore.LookupEntry(stocked->ExtendedCost);
+        if (!cost)
+            return;
+
+        uint32 price = 0;
+        for (uint8 i = 0; i < MAX_ITEM_EXTENDED_COST_REQUIREMENTS; ++i)
+            if (cost->reqitem[i] == ITEM_TARNISHED_UNDERMINE_REAL)
+                price += cost->reqitemcount[i] * std::max<uint8>(count, 1);   // the core counts 0 as 1
+
+        uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL);
+        if (price <= carried)
+            return;
+
+        uint32 missing = price - carried;
+        if (!Wallet::ToBags(player, missing, "vendor", true))
+            return;
+
+        ChatHandler(player->GetSession()).PSendSysMessage("Pix Xizzix takes the {} {} you were short from your account "
+            "wallet. It holds {} now.", missing, CoinName(missing), Wallet::Balance(player->GetSession()->GetAccountId()));
     }
 };
 

@@ -79,6 +79,11 @@ namespace BossCoins
         bool Take(uint32 account, uint32 guid, uint32 coins, std::string_view reason, uint32 offer = 0,
             CharacterDatabaseTransaction trans = nullptr);
 
+        // Out of the player's account wallet into their bags: as many of `coins` as the wallet,
+        // the coin's cap and the bags allow, or with `all` none unless every one fits. World
+        // thread, with the player in the world. Returns the coins moved.
+        uint32 ToBags(Player* player, uint32 coins, std::string_view reason, bool all = false);
+
         void Load();
     }
 
