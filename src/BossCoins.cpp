@@ -52,7 +52,6 @@
 #include "Opcodes.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "TradeData.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -601,7 +600,7 @@ public:
     // survives a switch to another character, and a made-up packet can name any vendor. So a
     // purchase from one of her pages must name her, and she must offer the page right now.
     void OnPlayerBeforeBuyItemFromVendor(Player* player, ObjectGuid vendorguid, uint32 vendorslot, uint32& item,
-        uint8 count, uint8 /*bag*/, uint8 /*slot*/) override
+        uint8 count, uint8 bag, uint8 slot) override
     {
         uint32 page = player->GetSession()->GetCurrentVendor();
         if (page <= NPC_PIX_XIZZIX || page > NPC_PIX_XIZZIX_LAST_PAGE)
@@ -615,18 +614,17 @@ public:
             return;
         }
 
-        PayShortfallFromWallet(player, pix, page, vendorslot, item, count);
+        PayShortfallFromWallet(player, pix, page, vendorslot, item, count, bag, slot);
     }
 
-    // Her prices are in bag coins: the core checks the bags (not the bank, nor a trade window)
-    // for the price right after this hook, and takes it from them. Coins in the account wallet
+    // Her prices are in bag coins: the core checks the bags (not the bank) for the price right after this hook, and takes it from them. Coins in the account wallet
     // count too: when the bags are short, she moves what is missing out of the wallet into them
     // first, all of it or none. The core's cheap checks that come after the hook are made here
     // first, so a purchase that can't happen moves nothing. One can still fail after the move
     // (the coins took the slot the item needed): the moved coins then stay in the bags, and
     // the chat line says that is where they went.
     static void PayShortfallFromWallet(Player* player, Creature* pix, uint32 page, uint32 vendorslot, uint32 item,
-        uint8 count)
+        uint8 count, uint8 bag, uint8 slot)
     {
         VendorItemData const* stock = sObjectMgr->GetNpcVendorItemList(page);
         VendorItem const* stocked = stock ? stock->GetItem(vendorslot) : nullptr;
@@ -645,7 +643,7 @@ public:
             if (cost->reqitem[i] == ITEM_TARNISHED_UNDERMINE_REAL)
                 price += cost->reqitemcount[i] * count;
 
-        uint32 carried = CarriedForPrice(player);
+        uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL);
         if (price <= carried)
             return;
 
@@ -658,8 +656,20 @@ public:
         ConditionList conditions = sConditionMgr->GetConditionsForNpcVendorEvent(pix->GetEntry(), item);
         if (!sConditionMgr->IsObjectMeetToConditions(player, pix, conditions))
             return;
-        ItemPosCountVec dest;
-        if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, item, proto->BuyCount * count) != EQUIP_ERR_OK)
+        // where the client wants it: anywhere in the bags, a bag slot, or straight onto the body
+        if ((bag == NULL_BAG && slot == NULL_SLOT) || player->IsInventoryPos(bag, slot))
+        {
+            ItemPosCountVec dest;
+            if (player->CanStoreNewItem(bag, slot, dest, item, proto->BuyCount * count) != EQUIP_ERR_OK)
+                return;
+        }
+        else if (player->IsEquipmentPos(bag, slot))
+        {
+            uint16 dest = 0;
+            if (proto->BuyCount * count != 1 || player->CanEquipNewItem(slot, dest, item, false) != EQUIP_ERR_OK)
+                return;
+        }
+        else
             return;
 
         ChatHandler chat(player->GetSession());
@@ -683,19 +693,6 @@ public:
 
         chat.PSendSysMessage("Pix Xizzix moves the {} {} you were short from your account wallet into your bags. "
             "The wallet holds {} now.", missing, CoinName(missing), Wallet::Balance(account));
-    }
-
-    // The coins the core counts for a price: those in the bags, less any in an open trade window
-    // (HasItemCount skips items in trade).
-    static uint32 CarriedForPrice(Player* player)
-    {
-        uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL);
-        if (TradeData* trade = player->GetTradeData())
-            for (uint8 slot = 0; slot < TRADE_SLOT_COUNT; ++slot)
-                if (Item* traded = trade->GetItem(TradeSlots(slot)))
-                    if (traded->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL && traded->IsInTrade())
-                        carried -= std::min(carried, traded->GetCount());
-        return carried;
     }
 };
 
