@@ -105,7 +105,7 @@ Every account has a coin wallet. It has no cap (a character's bags hold 250 at m
 - `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
   console too) adds coins, or with a minus takes them.
 - **DragonUI's Currency tab** shows the balance too, under *Account Wallet* (with
-  [DragonUI](https://github.com/buildthehomelab/wow-addon-DragonUI) 2.5.5 or later). The
+  [DragonUI](https://github.com/buildthehomelab/wow-addon-DragonUI) 2.6.1 or later). The
   server sends it as an addon message (prefix `DUI_CURRENCY`) when the client asks at login or
   after a `/reload`, and again whenever the balance changes.
 - Every change is in table `mod_boss_coins_ledger`: when, how many, from or to which character,
