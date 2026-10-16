@@ -190,6 +190,7 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | `BossCoins.Enable` | `1` | With `0` no boss gives coins and there are no daily login coins. Pix Xizzix keeps trading |
 | `BossCoins.MinBossLevel` | `55` | A boss below this level gives nothing, unless it has a row of its own in the table below |
 | `BossCoins.BossKills.ToWallet` | `1` | `1`: a boss's coins go into the account wallet. `0`: into the bags |
+| `BossCoins.BossKills.BonusAura` | `0` | a spell whose aura gives a chance (its first effect amount, in percent) of one more coin per boss award, e.g. mod-guild-levels' For Great Justice (90455). `0`: off |
 | `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
 | `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
 | `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |

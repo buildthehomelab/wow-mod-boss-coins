@@ -41,6 +41,16 @@ BossCoins.MinBossLevel = 55
 BossCoins.BossKills.ToWallet = 1
 
 #
+#    BossCoins.BossKills.BonusAura
+#        Description: A spell whose aura gives one more coin per boss award: the aura's first
+#                     effect amount is the percent chance. 0 = off. mod-guild-levels' For Great
+#                     Justice perk is 90455.
+#        Default:     0
+#
+
+BossCoins.BossKills.BonusAura = 0
+
+#
 #    BossCoins.DailyLogin.Coins
 #        Description: Coins an account gets once a day for logging in, after the daily quest
 #                     reset. The first character of the account in the world gets them,

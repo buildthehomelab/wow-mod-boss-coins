@@ -52,6 +52,9 @@
 #include "Opcodes.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "SpellAuraEffects.h"
+#include "SpellAuras.h"
+#include "SpellInfo.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -101,6 +104,7 @@ namespace
         uint32 dailyLoginCoins = 2;
         bool dailyToWallet = true;
         bool bossToWallet = true;
+        uint32 bonusAura = 0;       // a spell whose aura's amount is a chance of one more coin
     };
 
     Config config;
@@ -206,6 +210,20 @@ namespace
             CharacterDatabase.Execute("DELETE FROM mod_boss_coins_award WHERE instance = {}", instanceId);
     }
 
+    // BossCoins.BossKills.BonusAura: a player with that aura has its first effect's amount as a
+    // percent chance of one more coin per boss award (mod-guild-levels' For Great Justice).
+    uint32 BonusCoin(Player* player)
+    {
+        if (!config.bonusAura)
+            return 0;
+        AuraEffect const* effect = player->GetAuraEffect(config.bonusAura, EFFECT_0);
+        if (!effect || effect->GetAmount() <= 0 || !roll_chance_i(effect->GetAmount()))
+            return 0;
+        ChatHandler(player->GetSession()).PSendSysMessage("|cff40c040{}:|r one more {}.",
+            effect->GetBase()->GetSpellInfo()->SpellName[0], CoinName(1));
+        return 1;
+    }
+
     void GiveCoins(Player* player, uint32 count)
     {
         ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
@@ -297,11 +315,12 @@ namespace
             if (Player* player = ref.GetSource())
                 if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
                 {
+                    uint32 count = itr->second + BonusCoin(player);
                     if (config.bossToWallet)
                         ChatHandler(player->GetSession()).PSendSysMessage("{} {} into your account wallet (.wallet), which now holds {}.",
-                            itr->second, CoinName(itr->second), ToWallet(player, itr->second, "boss"));
+                            count, CoinName(count), ToWallet(player, count, "boss"));
                     else
-                        GiveCoins(player, itr->second);
+                        GiveCoins(player, count);
                 }
     }
 
@@ -709,6 +728,7 @@ public:
         config.dailyLoginCoins = sConfigMgr->GetOption<uint32>("BossCoins.DailyLogin.Coins", 2);
         config.dailyToWallet = sConfigMgr->GetOption<bool>("BossCoins.DailyLogin.ToWallet", true);
         config.bossToWallet = sConfigMgr->GetOption<bool>("BossCoins.BossKills.ToWallet", true);
+        config.bonusAura = sConfigMgr->GetOption<uint32>("BossCoins.BossKills.BonusAura", 0);
 
         LOG_INFO("server.loading", "mod-boss-coins: {}, bosses of level {} and up into the {}, {} coin(s) a day for logging in, "
             "into the {}", config.enabled ? "enabled" : "disabled", config.minBossLevel,
