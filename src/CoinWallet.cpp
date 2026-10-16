@@ -48,9 +48,10 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
-    // account -> coins. Boss coins come in from the map threads, several at once, and the rest
-    // of the changes happen on the world thread: every change is checked and made under the
-    // lock, in Change, so any thread may make one.
+    // account -> coins. Boss coins come in from the map threads, several at once, and so may
+    // Pix's vendor top-ups (a buy packet can be handled on the player's map); the rest of the
+    // changes happen on the world thread. Every change is checked and made under the lock, in
+    // Change, so any thread may make one.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
 

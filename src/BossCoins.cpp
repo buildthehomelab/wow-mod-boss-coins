@@ -52,6 +52,7 @@
 #include "Opcodes.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "TradeData.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -614,16 +615,18 @@ public:
             return;
         }
 
-        PayShortfallFromWallet(player, page, vendorslot, item, count);
+        PayShortfallFromWallet(player, pix, page, vendorslot, item, count);
     }
 
-    // Her prices are in bag coins: the core checks the bags (not the bank) for the price right
-    // after this hook, and takes it from them. Coins in the account wallet count too: when the
-    // bags are short, she moves what is missing out of the wallet into them first. All of it or
-    // nothing, so a purchase the wallet can't cover leaves the coins where they were. The core's
-    // own checks still follow; one that fails after this (bags too full for the item) leaves the
-    // moved coins in the bags.
-    static void PayShortfallFromWallet(Player* player, uint32 page, uint32 vendorslot, uint32 item, uint8 count)
+    // Her prices are in bag coins: the core checks the bags (not the bank, nor a trade window)
+    // for the price right after this hook, and takes it from them. Coins in the account wallet
+    // count too: when the bags are short, she moves what is missing out of the wallet into them
+    // first, all of it or none. The core's cheap checks that come after the hook are made here
+    // first, so a purchase that can't happen moves nothing. One can still fail after the move
+    // (the coins took the slot the item needed): the moved coins then stay in the bags, and
+    // the chat line says that is where they went.
+    static void PayShortfallFromWallet(Player* player, Creature* pix, uint32 page, uint32 vendorslot, uint32 item,
+        uint8 count)
     {
         VendorItemData const* stock = sObjectMgr->GetNpcVendorItemList(page);
         VendorItem const* stocked = stock ? stock->GetItem(vendorslot) : nullptr;
@@ -631,24 +634,68 @@ public:
             return;
 
         ItemExtendedCostEntry const* cost = sItemExtendedCostStore.LookupEntry(stocked->ExtendedCost);
-        if (!cost)
+        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(item);
+        if (!cost || !proto)
             return;
+
+        count = std::max<uint8>(count, 1);   // the core counts 0 as 1
 
         uint32 price = 0;
         for (uint8 i = 0; i < MAX_ITEM_EXTENDED_COST_REQUIREMENTS; ++i)
             if (cost->reqitem[i] == ITEM_TARNISHED_UNDERMINE_REAL)
-                price += cost->reqitemcount[i] * std::max<uint8>(count, 1);   // the core counts 0 as 1
+                price += cost->reqitemcount[i] * count;
 
-        uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL);
+        uint32 carried = CarriedForPrice(player);
         if (price <= carried)
             return;
 
-        uint32 missing = price - carried;
-        if (!Wallet::ToBags(player, missing, "vendor", true))
+        // The core's own checks, in its order, that would refuse the purchase anyway.
+        if (!player->IsAlive())
+            return;
+        if (!(proto->AllowableClass & player->getClassMask()) && proto->Bonding == BIND_WHEN_PICKED_UP &&
+            !player->IsGameMaster())
+            return;
+        ConditionList conditions = sConditionMgr->GetConditionsForNpcVendorEvent(pix->GetEntry(), item);
+        if (!sConditionMgr->IsObjectMeetToConditions(player, pix, conditions))
+            return;
+        ItemPosCountVec dest;
+        if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, item, proto->BuyCount * count) != EQUIP_ERR_OK)
             return;
 
-        ChatHandler(player->GetSession()).PSendSysMessage("Pix Xizzix takes the {} {} you were short from your account "
-            "wallet. It holds {} now.", missing, CoinName(missing), Wallet::Balance(player->GetSession()->GetAccountId()));
+        ChatHandler chat(player->GetSession());
+        uint32 account = player->GetSession()->GetAccountId();
+        uint32 missing = price - carried;
+        uint32 balance = Wallet::Balance(account);
+        if (balance < missing)
+            return;   // the core's "missing items" says it
+
+        if (!Wallet::ToBags(player, missing, "vendor", true))
+        {
+            if (CoinRoom(player) < missing)
+                chat.PSendSysMessage("Your account wallet could pay the {} {} you are short, but a character can't own more "
+                    "than {} Tarnished Undermine Reals, bank and mailbox included. Put some in the wallet first.",
+                    missing, CoinName(missing), sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL)->MaxCount);
+            else
+                chat.PSendSysMessage("Your account wallet could pay the {} {} you are short, but your bags have no room "
+                    "for them.", missing, CoinName(missing));
+            return;
+        }
+
+        chat.PSendSysMessage("Pix Xizzix moves the {} {} you were short from your account wallet into your bags. "
+            "The wallet holds {} now.", missing, CoinName(missing), Wallet::Balance(account));
+    }
+
+    // The coins the core counts for a price: those in the bags, less any in an open trade window
+    // (HasItemCount skips items in trade).
+    static uint32 CarriedForPrice(Player* player)
+    {
+        uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL);
+        if (TradeData* trade = player->GetTradeData())
+            for (uint8 slot = 0; slot < TRADE_SLOT_COUNT; ++slot)
+                if (Item* traded = trade->GetItem(TradeSlots(slot)))
+                    if (traded->GetEntry() == ITEM_TARNISHED_UNDERMINE_REAL && traded->IsInTrade())
+                        carried -= std::min(carried, traded->GetCount());
+        return carried;
     }
 };
 

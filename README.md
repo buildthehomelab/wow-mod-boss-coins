@@ -99,8 +99,9 @@ Every account has a coin wallet. It has no cap (a character's bags hold 250 at m
   an "Enter Code" box, so there is none). And the shop.
 - **Buying from Pix:** her prices are bag coins, but the wallet pays too. When the bags are
   short of a price, she moves the missing coins out of the wallet into the bags first, all of
-  them or none, and says so in chat. If the purchase then fails for another reason (bags too
-  full for the item), the moved coins stay in the bags.
+  them or none, and says so in chat (or why she can't: the 250 cap counts bank and mailbox
+  coins). Coins in an open trade window don't count. If the purchase still fails after the
+  move (the coins took the slot the item needed), the moved coins stay in the bags.
 - `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
   console too) adds coins, or with a minus takes them.
 - Every change is in table `mod_boss_coins_ledger`: when, how many, from or to which character,
