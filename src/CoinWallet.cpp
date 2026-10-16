@@ -17,6 +17,9 @@
  * places or in neither. The database rows change by the difference, not to the new balance, so
  * writes that a worker applies out of order still add up.
  *
+ * The balance also shows in DragonUI's Currency tab: the wallet sends it to the player's client
+ * as an addon message whenever it changes, and when the client asks (see SendToClient below).
+ *
  * .wallet                         your account's balance
  * .wallet adjust <account> <n>    add (or with a minus, take) coins; a game master's fix
  *
@@ -36,12 +39,15 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "ScriptedGossip.h"
+#include "WorldPacket.h"
 #include "WorldSession.h"
+#include "WorldSessionMgr.h"
 
 #include <algorithm>
 #include <limits>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 using namespace BossCoins;
 using namespace Acore::ChatCommands;
@@ -54,6 +60,12 @@ namespace
     // Change, so any thread may make one.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
+
+    // Accounts whose balance changed since the world thread last told their client. Changes come
+    // from any thread, and the session list belongs to the world thread, so the telling waits for
+    // BossCoinsWalletWorldScript::OnUpdate.
+    std::mutex changedLock;
+    std::unordered_set<uint32> changedAccounts;
 
     void Record(CharacterDatabaseTransaction trans, uint32 account, uint32 guid, int64 change, uint32 balance,
         std::string_view reason, uint32 offer)
@@ -89,6 +101,11 @@ namespace
             *balanceAfter = balance;
         if (!change)
             return 0;
+
+        {
+            std::lock_guard<std::mutex> guard(changedLock);
+            changedAccounts.insert(account);
+        }
 
         bool own = !trans;
         if (own)
@@ -180,6 +197,30 @@ void BossCoins::Wallet::Load()
     }
 
     LOG_INFO("server.loading", "mod-boss-coins: {} account wallet(s) with coins in them", balances.size());
+}
+
+namespace
+{
+    // DragonUI's Currency tab lists currencies the server keeps outside the bags, sent to it as
+    // addon whispers to the player with this prefix (DragonUI's modules/servercurrency.lua):
+    //   server -> client   S:<item>:<count>:<section>:<name>   one row, under heading <section>
+    //   client -> server   HELLO                               send them all (login, /reload)
+    // The coin's item id gives the row its icon and tooltip.
+    constexpr char const* CURRENCY_PREFIX = "DUI_CURRENCY";
+    constexpr char const* CURRENCY_SECTION = "Account Wallet";
+
+    void SendToClient(Player* player)
+    {
+        ItemTemplate const* coin = sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL);
+        if (!coin)
+            return;
+
+        std::string message = fmt::format("{}\tS:{}:{}:{}:{}", CURRENCY_PREFIX, ITEM_TARNISHED_UNDERMINE_REAL,
+            Wallet::Balance(player->GetSession()->GetAccountId()), CURRENCY_SECTION, coin->Name1);
+        WorldPacket data;
+        ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER, LANG_ADDON, player, player, message);
+        player->GetSession()->SendPacket(&data);
+    }
 }
 
 namespace
@@ -404,8 +445,57 @@ public:
     }
 };
 
+// Tells the client of every account whose balance changed. On the world thread, which owns the
+// session list.
+class BossCoinsWalletWorldScript : public WorldScript
+{
+public:
+    BossCoinsWalletWorldScript() : WorldScript("BossCoinsWalletWorldScript", { WORLDHOOK_ON_UPDATE }) { }
+
+    void OnUpdate(uint32 /*diff*/) override
+    {
+        std::unordered_set<uint32> accounts;
+        {
+            std::lock_guard<std::mutex> guard(changedLock);
+            if (changedAccounts.empty())
+                return;
+            accounts.swap(changedAccounts);
+        }
+
+        for (uint32 account : accounts)
+            if (WorldSession* session = sWorldSessionMgr->FindSession(account))
+                if (Player* player = session->GetPlayer())
+                    if (player->IsInWorld() && IsRealPlayer(player))
+                        SendToClient(player);
+    }
+};
+
+class BossCoinsWalletPlayerScript : public PlayerScript
+{
+public:
+    BossCoinsWalletPlayerScript() : PlayerScript("BossCoinsWalletPlayerScript",
+        { PLAYERHOOK_CAN_PLAYER_USE_PRIVATE_CHAT }) { }
+
+    // DragonUI asks by whispering itself; the whisper is swallowed, never shown as chat.
+    bool OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Player* receiver) override
+    {
+        if (lang != LANG_ADDON || receiver != player)
+            return true;
+
+        std::string const prefixTab = std::string(CURRENCY_PREFIX) + "\t";
+        if (msg.compare(0, prefixTab.size(), prefixTab) != 0)
+            return true;
+
+        if (std::string_view(msg).substr(prefixTab.size()) == "HELLO")
+            SendToClient(player);
+        return false;
+    }
+};
+
 void AddBossCoinsWalletScripts()
 {
     new npc_boss_coins_pix();
     new BossCoinsWalletCommandScript();
+    new BossCoinsWalletWorldScript();
+    new BossCoinsWalletPlayerScript();
 }
