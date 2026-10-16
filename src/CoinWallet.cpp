@@ -462,10 +462,12 @@ public:
             accounts.swap(changedAccounts);
         }
 
+        // Not only players in the world: one on a loading screen still gets it, or the change
+        // would be lost (its account is out of the set already).
         for (uint32 account : accounts)
             if (WorldSession* session = sWorldSessionMgr->FindSession(account))
                 if (Player* player = session->GetPlayer())
-                    if (player->IsInWorld() && IsRealPlayer(player))
+                    if (IsRealPlayer(player))
                         SendToClient(player);
     }
 };
@@ -476,7 +478,9 @@ public:
     BossCoinsWalletPlayerScript() : PlayerScript("BossCoinsWalletPlayerScript",
         { PLAYERHOOK_CAN_PLAYER_USE_PRIVATE_CHAT }) { }
 
-    // DragonUI asks by whispering itself; the whisper is swallowed, never shown as chat.
+    // DragonUI asks by whispering itself. HELLO is let through, so any other module that lists a
+    // currency the same way gets to answer it too (DragonUI ignores the echo); the rest of the
+    // prefix's whispers are swallowed.
     bool OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Player* receiver) override
     {
         if (lang != LANG_ADDON || receiver != player)
@@ -486,9 +490,11 @@ public:
         if (msg.compare(0, prefixTab.size(), prefixTab) != 0)
             return true;
 
-        if (std::string_view(msg).substr(prefixTab.size()) == "HELLO")
-            SendToClient(player);
-        return false;
+        if (std::string_view(msg).substr(prefixTab.size()) != "HELLO")
+            return false;
+
+        SendToClient(player);
+        return true;
     }
 };
 
