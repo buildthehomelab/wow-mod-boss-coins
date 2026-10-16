@@ -4,8 +4,9 @@
  * Coins that belong to an account instead of a character's bags. The launcher's shop spends
  * from it (CoinShop.cpp), the boss coins and the daily login coins go into it, and Pix Xizzix
  * moves coins between a character's bags and the wallet: "put my coins in my wallet" takes every
- * coin the character carries (bags and bank), "take coins out" asks how many. Bag coins are
- * still what her own stock costs. The wallet has no cap; a character's bags still hold at most
+ * coin the character carries (bags and bank), "take coins out" offers a few amounts. Her own
+ * stock costs bag coins, and when the bags are short she takes the rest out of the wallet
+ * (BossCoins.cpp). The wallet has no cap; a character's bags still hold at most
  * the coin's own maximum.
  *
  *   characters table mod_boss_coins_wallet   account -> coins, the balance
@@ -38,7 +39,7 @@
 #include "WorldSession.h"
 
 #include <algorithm>
-#include <charconv>
+#include <limits>
 #include <mutex>
 #include <unordered_map>
 
@@ -47,9 +48,10 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
-    // account -> coins. Boss coins come in from the map threads, several at once, and the rest
-    // of the changes happen on the world thread: every change is checked and made under the
-    // lock, in Change, so any thread may make one.
+    // account -> coins. Boss coins come in from the map threads, several at once, and so may
+    // Pix's vendor top-ups (a buy packet can be handled on the player's map); the rest of the
+    // changes happen on the world thread. Every change is checked and made under the lock, in
+    // Change, so any thread may make one.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
 
@@ -119,6 +121,46 @@ bool BossCoins::Wallet::Take(uint32 account, uint32 guid, uint32 coins, std::str
     return !coins || Change(account, guid, -int64(coins), reason, offer, trans);
 }
 
+uint32 BossCoins::Wallet::ToBags(Player* player, uint32 coins, std::string_view reason, bool all)
+{
+    uint32 account = player->GetSession()->GetAccountId();
+    uint32 guid = player->GetGUID().GetCounter();
+
+    uint32 count = std::min({ coins, Balance(account), CoinRoom(player) });
+    if (!count || (all && count < coins))
+        return 0;
+
+    // As many as the bags have room for.
+    uint32 noSpace = 0;
+    ItemPosCountVec dest;
+    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, ITEM_TARNISHED_UNDERMINE_REAL, count, &noSpace) != EQUIP_ERR_OK)
+    {
+        count -= std::min(count, noSpace);
+        dest.clear();
+        if (!count || (all && count < coins) ||
+            player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, ITEM_TARNISHED_UNDERMINE_REAL, count) != EQUIP_ERR_OK)
+            return 0;
+    }
+
+    // Out of the wallet first: no coin reaches the bags that the wallet didn't give up.
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    if (!Take(account, guid, count, reason, 0, trans))
+        return 0;
+
+    Item* item = player->StoreNewItem(dest, ITEM_TARNISHED_UNDERMINE_REAL, true);
+    if (!item)
+    {
+        Add(account, guid, count, reason, 0, trans);
+        CharacterDatabase.CommitTransaction(trans);
+        return 0;
+    }
+
+    player->SendNewItem(item, count, true, false);
+    player->SaveInventoryAndGoldToDB(trans);
+    CharacterDatabase.CommitTransaction(trans);
+    return count;
+}
+
 void BossCoins::Wallet::Load()
 {
     std::lock_guard<std::mutex> guard(walletLock);
@@ -146,9 +188,17 @@ namespace
     {
         // Pix's own options (her gossip_menu_option rows) come with sender 0.
         SENDER_WALLET    = NPC_PIX_XIZZIX,
-        ACTION_DEPOSIT   = 1,
-        ACTION_WITHDRAW  = 2,
+        ACTION_DEPOSIT       = 1,
+        ACTION_WITHDRAW_MENU = 2,
+        ACTION_WITHDRAW_ALL  = 3,
+        // + the number of coins
+        ACTION_WITHDRAW      = 1000,
     };
+
+    // The amounts her "take coins out" menu offers, besides "as many as I can carry". A 3.3.5
+    // client asks for a typed number only as an "Enter Code" box that shows none of the server's
+    // text, so no number is typed.
+    constexpr uint32 WITHDRAW_AMOUNTS[] = { 10, 25, 50, 100 };
 
     void Deposit(Player* player)
     {
@@ -201,49 +251,21 @@ namespace
         uint32 balance = Wallet::Balance(account);
 
         uint32 room = CoinRoom(player);
-        uint32 count = std::min({ wanted, balance, room });
-        if (!count)
+        if (!std::min({ wanted, balance, room }))
         {
-            if (!wanted)
-                chat.SendSysMessage("Type how many coins you want to take out, as a number.");
-            else if (!balance)
+            if (!balance)
                 chat.SendSysMessage("Your account wallet is empty.");
             else
                 chat.SendSysMessage("This character can't carry any more Tarnished Undermine Reals.");
             return;
         }
 
-        // As many as the bags have room for.
-        uint32 noSpace = 0;
-        ItemPosCountVec dest;
-        InventoryResult result = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, ITEM_TARNISHED_UNDERMINE_REAL, count, &noSpace);
-        if (result != EQUIP_ERR_OK)
+        uint32 count = Wallet::ToBags(player, wanted, "withdraw");
+        if (!count)
         {
-            count -= std::min(count, noSpace);
-            dest.clear();
-            if (!count || player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, ITEM_TARNISHED_UNDERMINE_REAL, count) != EQUIP_ERR_OK)
-            {
-                player->SendEquipError(EQUIP_ERR_INVENTORY_FULL, nullptr, nullptr, ITEM_TARNISHED_UNDERMINE_REAL);
-                return;
-            }
-        }
-
-        // Out of the wallet first: no coin reaches the bags that the wallet didn't give up.
-        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
-        if (!Wallet::Take(account, player->GetGUID().GetCounter(), count, "withdraw", 0, trans))
-            return;
-
-        Item* item = player->StoreNewItem(dest, ITEM_TARNISHED_UNDERMINE_REAL, true);
-        if (!item)
-        {
-            Wallet::Add(account, player->GetGUID().GetCounter(), count, "withdraw", 0, trans);
-            CharacterDatabase.CommitTransaction(trans);
+            player->SendEquipError(EQUIP_ERR_INVENTORY_FULL, nullptr, nullptr, ITEM_TARNISHED_UNDERMINE_REAL);
             return;
         }
-
-        player->SendNewItem(item, count, true, false);
-        player->SaveInventoryAndGoldToDB(trans);
-        CharacterDatabase.CommitTransaction(trans);
 
         chat.PSendSysMessage("You take {} {} out of your account wallet. It holds {} now.", count, CoinName(count),
             Wallet::Balance(account));
@@ -259,17 +281,6 @@ namespace
             else
                 chat.SendSysMessage("Your bags had no room for more; the rest stay in the wallet.");
         }
-    }
-
-    uint32 ParseCount(char const* code)
-    {
-        std::string_view text = code ? code : "";
-        while (!text.empty() && text.front() == ' ')
-            text.remove_prefix(1);
-
-        uint32 value = 0;
-        auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-        return error == std::errc() ? value : 0;
     }
 }
 
@@ -294,10 +305,31 @@ public:
 
         if (balance)
             AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, fmt::format("Take coins out of my account wallet ({} in it).", balance),
-                SENDER_WALLET, ACTION_WITHDRAW, fmt::format("How many? Your account wallet holds {}.", balance), 0, true);
+                SENDER_WALLET, ACTION_WITHDRAW_MENU);
 
         player->SendPreparedGossip(creature);
         return true;
+    }
+
+    void ShowWithdrawMenu(Player* player, Creature* creature)
+    {
+        uint32 balance = Wallet::Balance(player->GetSession()->GetAccountId());
+        if (!balance)
+        {
+            OnGossipHello(player, creature);
+            return;
+        }
+
+        ClearGossipMenuFor(player);
+        for (uint32 amount : WITHDRAW_AMOUNTS)
+            if (amount < balance)
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, fmt::format("Take out {}.", amount),
+                    SENDER_WALLET, ACTION_WITHDRAW + amount);
+
+        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, fmt::format("Take out as many as I can carry (the wallet holds {}).",
+            balance), SENDER_WALLET, ACTION_WITHDRAW_ALL);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back.", SENDER_WALLET, 0);
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action) override
@@ -305,19 +337,18 @@ public:
         if (sender != SENDER_WALLET)
             return false;
 
+        if (action == ACTION_WITHDRAW_MENU)
+        {
+            ShowWithdrawMenu(player, creature);
+            return true;
+        }
+
         if (action == ACTION_DEPOSIT)
             Deposit(player);
-
-        return OnGossipHello(player, creature);
-    }
-
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code) override
-    {
-        if (sender != SENDER_WALLET)
-            return false;
-
-        if (action == ACTION_WITHDRAW)
-            Withdraw(player, ParseCount(code));
+        else if (action == ACTION_WITHDRAW_ALL)
+            Withdraw(player, std::numeric_limits<uint32>::max());
+        else if (action > ACTION_WITHDRAW)
+            Withdraw(player, action - ACTION_WITHDRAW);
 
         return OnGossipHello(player, creature);
     }

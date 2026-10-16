@@ -94,9 +94,14 @@ Every account has a coin wallet. It has no cap (a character's bags hold 250 at m
 
 - **In:** the boss coins, the daily login coins, and Pix Xizzix's option *Put the coins I
   carry in my account wallet*, which takes every coin the character has in bags and bank.
-- **Out:** her option *Take coins out of my account wallet* asks how many, and gives as many
-  as the bags and the 250 cap have room for. Her own stock is paid with bag coins, as before.
-  And the shop.
+- **Out:** her option *Take coins out of my account wallet* offers 10, 25, 50, 100 or as many
+  as the bags and the 250 cap have room for (a 3.3.5 client can only ask for a typed number in
+  an "Enter Code" box, so there is none). And the shop.
+- **Buying from Pix:** her prices are bag coins, but the wallet pays too. When the bags are
+  short of a price, she moves the missing coins out of the wallet into the bags first, all of
+  them or none, and says so in chat (or why she can't: the 250 cap counts bank and mailbox
+  coins). If the purchase still fails after the
+  move (the coins took the slot the item needed), the moved coins stay in the bags.
 - `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
   console too) adds coins, or with a minus takes them.
 - Every change is in table `mod_boss_coins_ledger`: when, how many, from or to which character,
@@ -315,7 +320,8 @@ Category: Dungeons & Raids
 - Every account now gets **2 Tarnished Undermine Reals a day** for logging in, after the
   daily reset. They go into your new **account wallet**: type `.wallet` to see it.
 - Pix Xizzix keeps your wallet. She puts the Reals you carry into it, and pays them back out
-  when you want to buy from her.
+  when you want them. Buying from her takes any Reals your bags are short of straight from your
+  wallet, so there's no need to take them out first.
 - The wallet pays for the new **coin shop**: character renames, new looks, race and faction
   changes, red panda companions and Great Panda mounts. Bought items arrive by mail.
 
