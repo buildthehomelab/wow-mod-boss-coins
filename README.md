@@ -104,6 +104,10 @@ Every account has a coin wallet. It has no cap (a character's bags hold 250 at m
   move (the coins took the slot the item needed), the moved coins stay in the bags.
 - `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
   console too) adds coins, or with a minus takes them.
+- **DragonUI's Currency tab** shows the balance too, under *Account Wallet* (with
+  [DragonUI](https://github.com/buildthehomelab/wow-addon-DragonUI) 2.6.1 or later). The
+  server sends it as an addon message (prefix `DUI_CURRENCY`) when the client asks at login or
+  after a `/reload`, and again whenever the balance changes.
 - Every change is in table `mod_boss_coins_ledger`: when, how many, from or to which character,
   and why.
 
@@ -323,6 +327,8 @@ Category: Dungeons & Raids
 - Pix Xizzix keeps your wallet. She puts the Reals you carry into it, and pays them back out
   when you want them. Buying from her takes any Reals your bags are short of straight from your
   wallet, so there's no need to take them out first.
+- Your wallet now shows in the **Currency** tab of the character window, under
+  *Account Wallet*, so you can see your Reals without typing `.wallet`.
 - The wallet pays for the new **coin shop**: character renames, new looks, race and faction
   changes, red panda companions and Great Panda mounts. Bought items arrive by mail.
 
