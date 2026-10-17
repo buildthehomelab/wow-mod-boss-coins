@@ -6,8 +6,8 @@
  * moves coins between a character's bags and the wallet: "put my coins in my wallet" takes every
  * coin the character carries (bags and bank), "take coins out" offers a few amounts. Her own
  * stock costs bag coins, and when the bags are short she takes the rest out of the wallet
- * (BossCoins.cpp). The wallet has no cap; a character's bags still hold at most
- * the coin's own maximum.
+ * (BossCoins.cpp). The wallet has no cap, and neither has the coin itself unless
+ * its item_template row sets a maxcount.
  *
  *   characters table mod_boss_coins_wallet   account -> coins, the balance
  *   characters table mod_boss_coins_ledger   every change, with why and from which character

@@ -41,12 +41,11 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
   character off a lockout: keep mod-playerbots' `Playerbots.ResetInstanceIdForAltBots` at 0,
   or players can do it for their own alts.
 - **Bots get none.** Only players with a game client count.
-- With `BossCoins.BossKills.ToWallet = 0` the coins go into the bags instead. A character
-  can have **250** coins, counting the bank and the mailbox. Coins over that are lost, and with
-  full bags the coins come by mail.
+- With `BossCoins.BossKills.ToWallet = 0` the coins go into the bags instead, and with full
+  bags they come by mail.
 - **Coins are bound to the account.** They can't be traded or sold, but a player can mail them
-  to their other characters, of either faction, and the mail arrives at once. A character
-  that already has 250 can't take more out of the mailbox.
+  to their other characters, of either faction, and the mail arrives at once. There is no cap
+  on how many a character can own.
 
 ### Daily login coins
 
@@ -55,9 +54,8 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
   them for the account; the account's other characters get nothing more that day. Per account,
   not per character, because the coins can be mailed between the account's characters anyway.
 - A player who is already in the world at the reset gets the new day's coins then.
-- With `BossCoins.DailyLogin.ToWallet = 0` they go into the bags instead. Then a character
-  that can't hold both coins (it has 249 or 250) gets none and is told so; the coins wait for
-  the account's next character, or for this one after it has spent some and logs in again.
+- With `BossCoins.DailyLogin.ToWallet = 0` they go into the bags instead, by mail when the
+  bags are full.
 - Bots get none. `BossCoins.DailyLogin.Coins` sets the number; `0` switches it off.
 
 ## Spending coins
@@ -90,17 +88,16 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
 
 ## The wallet and the shop
 
-Every account has a coin wallet. It has no cap (a character's bags hold 250 at most).
+Every account has a coin wallet. It has no cap, and neither do the coins in a character's bags.
 
 - **In:** the boss coins, the daily login coins, and Pix Xizzix's option *Put the coins I
   carry in my account wallet*, which takes every coin the character has in bags and bank.
 - **Out:** her option *Take coins out of my account wallet* offers 10, 25, 50, 100 or as many
-  as the bags and the 250 cap have room for (a 3.3.5 client can only ask for a typed number in
+  as the bags have room for (a 3.3.5 client can only ask for a typed number in
   an "Enter Code" box, so there is none). And the shop.
 - **Buying from Pix:** her prices are bag coins, but the wallet pays too. When the bags are
   short of a price, she moves the missing coins out of the wallet into the bags first, all of
-  them or none, and says so in chat (or why she can't: the 250 cap counts bank and mailbox
-  coins). If the purchase still fails after the
+  them or none, and says so in chat (or why she can't: no room in the bags). If the purchase still fails after the
   move (the coins took the slot the item needed), the moved coins stay in the bags.
 - `.wallet` shows the account's balance. `.wallet adjust <account> <coins>` (administrators,
   console too) adds coins, or with a minus takes them.
@@ -322,6 +319,8 @@ Category: Dungeons & Raids
   **Ruins of Ahn'Qiraj** set. Players who have defeated C'Thun can buy every Tier 2.5 piece, and players who have
   defeated Kel'Thuzad every Tier 3 piece, the ring included.
 
+- Tarnished Undermine Reals no longer stop at **250** a character: carry, bank and mail as
+  many as you like.
 - Every account now gets **2 Tarnished Undermine Reals a day** for logging in, after the
   daily reset. They go into your new **account wallet**: type `.wallet` to see it.
 - Pix Xizzix keeps your wallet. She puts the Reals you carry into it, and pays them back out
