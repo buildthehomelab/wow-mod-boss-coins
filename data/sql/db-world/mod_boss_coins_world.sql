@@ -86,14 +86,14 @@ INSERT INTO `gossip_menu_option` (`MenuID`, `OptionID`, `OptionIcon`, `OptionTex
 (9503200, 7, 0, 'Show me what came out of Naxxramas.', 0, 3, 128, 9503205, 0, 0, 0, '', 0),
 (9503200, 8, 0, 'What else have you got?', 0, 3, 128, 9503204, 0, 0, 0, '', 0);
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
-(15, 9503200, 1, 0, 0, 8, 0, 66001, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 1 pieces and the Tier 2 legs to a player who has cleared progression phase 1'),
-(15, 9503200, 2, 0, 0, 8, 0, 66002, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2 helms to a player who has cleared progression phase 2'),
-(15, 9503200, 3, 0, 0, 8, 0, 66003, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2 bracers, gloves, belts, boots, shoulders and chests to a player who has cleared progression phase 3'),
+(15, 9503200, 1, 0, 0, 17, 0, 686, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 1 pieces and the Tier 2 legs to a player who has achievement 686'),
+(15, 9503200, 2, 0, 0, 17, 0, 684, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2 helms to a player who has achievement 684'),
+(15, 9503200, 3, 0, 0, 17, 0, 685, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2 bracers, gloves, belts, boots, shoulders and chests to a player who has achievement 685'),
 (15, 9503200, 4, 0, 0, 17, 0, 688, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Zul\'Gurub set pieces to a player who has achievement 688'),
 (15, 9503200, 5, 0, 0, 17, 0, 689, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Ruins of Ahn\'Qiraj set pieces to a player who has achievement 689'),
-(15, 9503200, 6, 0, 0, 8, 0, 66006, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2.5 pieces to a player who has cleared progression phase 6'),
+(15, 9503200, 6, 0, 0, 17, 0, 687, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2.5 pieces to a player who has achievement 687'),
 (15, 9503200, 7, 0, 0, 8, 0, 66007, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 3 pieces to a player who has cleared progression phase 7'),
-(15, 9503200, 8, 0, 0, 8, 0, 66001, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows Molten Core crafting materials and the flask recipes to a player who has cleared progression phase 1');
+(15, 9503200, 8, 0, 0, 17, 0, 686, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows Molten Core crafting materials and the flask recipes to a player who has achievement 686');
 
 -- What she sells. A class's pieces are shown and sold to that class only; the condition
 -- is on her own entry (the core asks the creature the player talks to, not the page).

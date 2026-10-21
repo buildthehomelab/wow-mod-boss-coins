@@ -11,11 +11,13 @@ Both read the same files in data/, so the server and the client can't disagree:
                (empty = every class). `name` is for the reader.
 - pages.tsv    her pages. A page is a vendor list of its own (a creature entry that is never
                spawned), opened by an option of her gossip menu, because one vendor list holds at
-               most 150 items. `phase` is the mod-individual-progression phase a player must have
-               cleared to get the option (0 = everyone): the SQL puts a condition on the phase's
-               hidden quest, 66000 + phase. `achievement` is an achievement the player must have
-               (0 = none), for the raids whose last boss is no phase of its own: Zul'Gurub (688,
-               defeat Hakkar) and the Ruins of Ahn'Qiraj (689, defeat Ossirian).
+               most 150 items. `achievement` is an achievement the player must have (0 = none):
+               the one for killing the raid's last boss, so a page opens for that raid only.
+               `phase` is the mod-individual-progression phase a player must have cleared
+               (0 = none): the SQL puts a condition on the phase's hidden quest, 66000 + phase.
+               Not for a raid that has an achievement: clearing a later phase clears every
+               earlier one too. Naxxramas uses it: phase 7 is the last one before The Burning
+               Crusade, and only a kill of the 40 player Kel'Thuzad reaches it.
 - costs.tsv    the prices: one ItemExtendedCost row per number of coins. Every price in stock.tsv
                needs a row here. Give a new price a new id; never reuse one.
 - sources.tsv  who gives coins: a row per instance map, or per boss (`encounter` is the boss's

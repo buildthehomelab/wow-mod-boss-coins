@@ -77,11 +77,12 @@ can show: it buys through console commands over SOAP. See [The wallet and the sh
 - She shows each class its own pieces only.
 - Every Tier 2 piece is for sale, on the page of the raid it drops in: legs from the Molten
   Core, helm from Onyxia's Lair, the other six from Blackwing Lair.
-- "Has killed Ragnaros", "has killed Onyxia", "has killed Nefarian", "has killed C'Thun" and
-  "has killed Kel'Thuzad" are
+- "Has killed" is the raid's own achievement: Molten Core (Ragnaros), Onyxia's Lair (Level 60),
+  Blackwing Lair (Nefarian), Zul'Gurub (Hakkar), Ruins of Ahn'Qiraj (Ossirian) and Temple of
+  Ahn'Qiraj (C'Thun). So a page opens for the raid it belongs to only: killing Nefarian doesn't
+  open Onyxia's Lair's page. "Has killed Kel'Thuzad" is
   [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression)
-  phases 1, 2, 3, 6 and 7. "Has killed Hakkar" and "has killed Ossirian" are the achievements
-  Zul'Gurub and Ruins of Ahn'Qiraj, because those two raids are no phase of their own. See
+  phase 7, the last one before The Burning Crusade, which only that kill reaches. See
   [Without mod-individual-progression](#without-mod-individual-progression).
 - A player who has only the first page open still gets her greeting first, which says how the
   others open.
@@ -240,7 +241,7 @@ python3 tools/build_boss_coins.py --sql data/sql/db-world/mod_boss_coins_world.s
 ```
 
 - `stock.tsv`: a row per item: page, item id, price, and the class that sees it (empty for all).
-- `pages.tsv`: her pages, and the progression phase or the achievement each one waits for.
+- `pages.tsv`: her pages, and the achievement or the progression phase each one waits for.
 - `costs.tsv`: one row per price. **A new price needs a new row here and a rebuilt client
   patch**: the client can only charge prices it has in its own table.
 
@@ -248,12 +249,11 @@ One page holds at most 150 items; the tool stops if a page goes over.
 
 ### Without mod-individual-progression
 
-Six of the locked pages wait for that module's hidden quests (66001, 66002, 66003, 66006 and
-66007). On a server
-without it those quests don't exist, the core drops the conditions with an error in its log at
-startup, and those pages are open to everyone. The Zul'Gurub and Ruins of Ahn'Qiraj pages wait for
-achievements and stay locked as before. To get rid of the errors, set `phase` to `0` on
-every row of `data/pages.tsv` and write the SQL again.
+The Naxxramas page waits for that module's hidden quest 66007. On a server without it the quest
+doesn't exist, the core drops the condition with an error in its log at startup, and that page is
+open to everyone. The other locked pages wait for achievements and stay locked as before. To get
+rid of the error, set `phase` to `0` on the Naxxramas row of `data/pages.tsv` and write the SQL
+again.
 
 ## What it adds to the databases
 
