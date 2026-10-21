@@ -1,10 +1,10 @@
-page	vendor	phase	achievement	option	holds
-dungeon	9503201	0	0	Show me the dungeon sets.	the Dungeon Set 1 pieces
-tier1	9503202	1	0	Show me what came out of the Molten Core.	the Tier 1 pieces and the Tier 2 legs
-onyxia	9503209	2	0	Show me what came out of Onyxia's Lair.	the Tier 2 helms
-tier2	9503203	3	0	Show me what came out of Blackwing Lair.	the Tier 2 bracers, gloves, belts, boots, shoulders and chests
-zulgurub	9503207	0	688	Show me what came out of Zul'Gurub.	the Zul'Gurub set pieces
-ruins	9503208	0	689	Show me what came out of the Ruins of Ahn'Qiraj.	the Ruins of Ahn'Qiraj set pieces
-tier25	9503206	6	0	Show me what came out of the Temple of Ahn'Qiraj.	the Tier 2.5 pieces
-tier3	9503205	7	0	Show me what came out of Naxxramas.	the Tier 3 pieces
-supplies	9503204	1	0	What else have you got?	Molten Core crafting materials and the flask recipes
+page	vendor	achievement	option	holds
+dungeon	9503201	0	Show me the dungeon sets.	the Dungeon Set 1 pieces
+tier1	9503202	686	Show me what came out of the Molten Core.	the Tier 1 pieces and the Tier 2 legs
+onyxia	9503209	684	Show me what came out of Onyxia's Lair.	the Tier 2 helms
+tier2	9503203	685	Show me what came out of Blackwing Lair.	the Tier 2 bracers, gloves, belts, boots, shoulders and chests
+zulgurub	9503207	688	Show me what came out of Zul'Gurub.	the Zul'Gurub set pieces
+ruins	9503208	689	Show me what came out of the Ruins of Ahn'Qiraj.	the Ruins of Ahn'Qiraj set pieces
+tier25	9503206	687	Show me what came out of the Temple of Ahn'Qiraj.	the Tier 2.5 pieces
+tier3	9503205	533	Show me what came out of Naxxramas.	the Tier 3 pieces
+supplies	9503204	686	What else have you got?	Molten Core crafting materials and the flask recipes

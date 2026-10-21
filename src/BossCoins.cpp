@@ -393,7 +393,7 @@ namespace
     }
 
     // Pix Xizzix offers this page of her stock to this player: the option of her menu that opens
-    // it exists and its conditions (progression phase, achievement) hold.
+    // it exists and its conditions (the achievement it waits for) hold.
     bool OffersPage(Player* player, Creature* pix, uint32 page)
     {
         GossipMenuItemsMapBounds options = sObjectMgr->GetGossipMenuItemsMapBounds(pix->GetGossipMenuId());

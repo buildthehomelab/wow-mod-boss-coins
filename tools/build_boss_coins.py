@@ -11,11 +11,11 @@ Both read the same files in data/, so the server and the client can't disagree:
                (empty = every class). `name` is for the reader.
 - pages.tsv    her pages. A page is a vendor list of its own (a creature entry that is never
                spawned), opened by an option of her gossip menu, because one vendor list holds at
-               most 150 items. `phase` is the mod-individual-progression phase a player must have
-               cleared to get the option (0 = everyone): the SQL puts a condition on the phase's
-               hidden quest, 66000 + phase. `achievement` is an achievement the player must have
-               (0 = none), for the raids whose last boss is no phase of its own: Zul'Gurub (688,
-               defeat Hakkar) and the Ruins of Ahn'Qiraj (689, defeat Ossirian).
+               most 150 items. `achievement` is an achievement the player must have (0 = none):
+               the one for killing the raid's last boss, so a page opens for that raid only.
+               Not a mod-individual-progression phase: a phase counts every earlier phase as
+               cleared too. The 40 player Naxxramas's is mod-individual-progression's own
+               achievement 533, which it gives for killing its Kel'Thuzad.
 - costs.tsv    the prices: one ItemExtendedCost row per number of coins. Every price in stock.tsv
                needs a row here. Give a new price a new id; never reuse one.
 - sources.tsv  who gives coins: a row per instance map, or per boss (`encounter` is the boss's
@@ -103,12 +103,9 @@ CLASS_MASKS = {"warrior": 1, "paladin": 2, "hunter": 4, "rogue": 8, "priest": 16
                "shaman": 64, "mage": 128, "warlock": 256, "druid": 1024}
 MAX_VENDOR_ITEMS = 150
 
-# mod-individual-progression keeps a player's phase as rewarded hidden quests: 66000 + phase, for
-# every phase up to theirs.
-PROGRESSION_QUEST = 66000
 CONDITION_SOURCE_GOSSIP_MENU_OPTION = 15
 CONDITION_SOURCE_NPC_VENDOR = 23
-CONDITION_QUESTREWARDED, CONDITION_CLASS, CONDITION_ACHIEVEMENT = 8, 15, 17
+CONDITION_CLASS, CONDITION_ACHIEVEMENT = 15, 17
 NPCFLAG_GOSSIP, NPCFLAG_VENDOR = 1, 128
 # The options open a vendor list but show the chat bubble, not the vendor bag: a 3.3.5 client that
 # is offered a single option with any other icon picks it without showing the greeting, and the
@@ -144,7 +141,7 @@ def load():
 
     pages = {}
     for r in read_tsv("pages.tsv"):
-        page = dict(key=r["page"], vendor=int(r["vendor"]), phase=int(r["phase"]),
+        page = dict(key=r["page"], vendor=int(r["vendor"]),
                     achievement=int(r["achievement"]), option=r["option"],
                     holds=r["holds"], stock=[])
         if page["vendor"] not in ENTRIES or page["vendor"] == PIX:
@@ -265,9 +262,8 @@ def write_sql(path, costs, pages, sources, credits, shop):
             PIX, PIX, *PIX_SPOT, sql_str("mod-boss-coins: %s, Booty Bay boardwalk" % PIX_NAME)))
 
         w("-- Her greeting, and an option per page. An option opens the page's vendor list (the core\n")
-        w("-- takes the list from ActionMenuID). A page with a phase is only offered to a player who\n")
-        w("-- has cleared that mod-individual-progression phase, a page with an achievement to a\n")
-        w("-- player who has it.\n")
+        w("-- takes the list from ActionMenuID). A page with an achievement is only offered to a player\n")
+        w("-- who has it.\n")
         w("DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = %d AND `SourceGroup` = %d;\n" % (
             CONDITION_SOURCE_GOSSIP_MENU_OPTION, PIX))
         w("DELETE FROM `gossip_menu_option` WHERE `MenuID` = %d;\n" % PIX)
@@ -280,14 +276,9 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w(",\n".join("(%d, %d, %d, %s, 0, %d, %d, %d, 0, 0, 0, '', 0)" % (
             PIX, n, GOSSIP_ICON_CHAT, sql_str(p["option"]), GOSSIP_OPTION_VENDOR, NPCFLAG_VENDOR, p["vendor"])
             for n, p in enumerate(pages)) + ";\n")
-        gates = []
-        for n, p in enumerate(pages):
-            if p["phase"]:
-                gates.append((n, CONDITION_QUESTREWARDED, PROGRESSION_QUEST + p["phase"],
-                              "%s shows %s to a player who has cleared progression phase %d" % (PIX_NAME, p["holds"], p["phase"])))
-            if p["achievement"]:
-                gates.append((n, CONDITION_ACHIEVEMENT, p["achievement"],
-                              "%s shows %s to a player who has achievement %d" % (PIX_NAME, p["holds"], p["achievement"])))
+        gates = [(n, CONDITION_ACHIEVEMENT, p["achievement"],
+                  "%s shows %s to a player who has achievement %d" % (PIX_NAME, p["holds"], p["achievement"]))
+                 for n, p in enumerate(pages) if p["achievement"]]
         if gates:
             w(CONDITION_COLUMNS)
             w(",\n".join("(%d, %d, %d, 0, 0, %d, 0, %d, 0, 0, 0, 0, 0, '', %s)" % (
