@@ -64,9 +64,8 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `position
 (9503200, 9503200, 0, 1, 1, -14339.4, 440.842, 7.46643, 1.39431, 300, 0, 0, 'mod-boss-coins: Pix Xizzix, Booty Bay boardwalk');
 
 -- Her greeting, and an option per page. An option opens the page's vendor list (the core
--- takes the list from ActionMenuID). A page with a phase is only offered to a player who
--- has cleared that mod-individual-progression phase, a page with an achievement to a
--- player who has it.
+-- takes the list from ActionMenuID). A page with an achievement is only offered to a player
+-- who has it.
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 15 AND `SourceGroup` = 9503200;
 DELETE FROM `gossip_menu_option` WHERE `MenuID` = 9503200;
 DELETE FROM `gossip_menu` WHERE `MenuID` = 9503200;
@@ -92,7 +91,7 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (15, 9503200, 4, 0, 0, 17, 0, 688, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Zul\'Gurub set pieces to a player who has achievement 688'),
 (15, 9503200, 5, 0, 0, 17, 0, 689, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Ruins of Ahn\'Qiraj set pieces to a player who has achievement 689'),
 (15, 9503200, 6, 0, 0, 17, 0, 687, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 2.5 pieces to a player who has achievement 687'),
-(15, 9503200, 7, 0, 0, 8, 0, 66007, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 3 pieces to a player who has cleared progression phase 7'),
+(15, 9503200, 7, 0, 0, 17, 0, 533, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows the Tier 3 pieces to a player who has achievement 533'),
 (15, 9503200, 8, 0, 0, 17, 0, 686, 0, 0, 0, 0, 0, '', 'Pix Xizzix shows Molten Core crafting materials and the flask recipes to a player who has achievement 686');
 
 -- What she sells. A class's pieces are shown and sold to that class only; the condition
