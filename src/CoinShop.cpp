@@ -20,7 +20,9 @@
  *     the item: race, class, level, or a skill it needs (riding, for a mount). The top `phase`
  *     is the account's: the mod-individual-progression phase of its furthest character. An
  *     offer with a higher `phase` is `locked` for every character, and `unlock` says what
- *     opens it ("Defeat Ragnaros in Molten Core").
+ *     opens it, as a sentence ("Defeat Ragnaros in Molten Core with any character to unlock it.";
+ *     past mod-individual-progression's ProgressionLimit "Comes to the realm with The Burning
+ *     Crusade.").
  *
  * .coinshop buy <account id> <offer id> <character guid>
  *     {"ok":true,"balance":7,"message":"..."} or {"ok":false,"error":"<code>","message":"..."}.
@@ -117,7 +119,7 @@ namespace
     // phase, for every phase it has reached. Phases run from 0 (new character) to 18.
     constexpr uint32 PROGRESSION_QUEST = 66000;
     constexpr uint8 PROGRESSION_LAST_PHASE = 18;
-    constexpr uint8 PROGRESSION_WOTLK_PHASE = 14;   // Wrath's raids from here on; 8-13 are The Burning Crusade's
+    constexpr uint8 PROGRESSION_WOTLK_PHASE = 13;   // Kil'jaeden's kill opens Northrend; 8-12 are The Burning Crusade's
 
     // What takes a character into each phase, for the launcher's "locked" offers.
     char const* PhaseUnlock(uint8 phase)
@@ -360,12 +362,12 @@ namespace
         return phase >= PROGRESSION_WOTLK_PHASE ? "Wrath of the Lich King" : "The Burning Crusade";
     }
 
-    // What opens a locked offer.
+    // What opens a locked offer, as the sentence the launcher shows.
     std::string UnlockText(Offer const& offer)
     {
         if (PastLimit(offer))
-            return fmt::format("Comes to the realm with {}", Expansion(offer.phase));
-        return PhaseUnlock(offer.phase);
+            return fmt::format("Comes to the realm with {}.", Expansion(offer.phase));
+        return fmt::format("{} with any character to unlock it.", PhaseUnlock(offer.phase));
     }
 
     bool Locked(Offer const& offer, uint8 accountPhase)
