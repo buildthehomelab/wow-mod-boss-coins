@@ -120,9 +120,9 @@ list. As shipped:
 | Race Change | 50 |
 | Faction Change (the mailbox must be empty) | 75 |
 | The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
-| Its five Meeksi red panda mounts | 40 each |
+| Its five Meeksi red panda mounts | 100 + 10 per progression phase: 110 to 180 |
 | Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
-| Its 69 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 40 + 5 per progression phase: 45 to 130 |
+| Its 69 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 100 + 10 per progression phase: 110 to 280 |
 
 **Progression.** An offer can wait for a
 [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) phase
