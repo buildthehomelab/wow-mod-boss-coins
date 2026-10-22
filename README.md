@@ -120,8 +120,19 @@ list. As shipped:
 | Race Change | 50 |
 | Faction Change (the mailbox must be empty) | 75 |
 | The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
-| Its five Great Panda mounts | 40 each |
+| Its five Meeksi red panda mounts | 40 each |
 | Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
+| Its 70 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 40 + 5 per progression phase: 45 to 130 |
+
+**Progression.** An offer can wait for a
+[mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) phase
+(the `phase` column). Until a character of the account has reached it, the offer is listed as
+locked, with what unlocks it ("Defeat Ragnaros in Molten Core"), and the shop won't sell it to
+any character of the account. The account's furthest character counts, so a main opens the shop
+for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The
+70 retail mounts are spread out: the ground and water mounts over the vanilla phases (1-7), the
+flyers over The Burning Crusade and Wrath of the Lich King (8-18), a few with every raid tier.
+Without mod-individual-progression (no quest 66001 on the server) every offer is for sale.
 
 An item that isn't on the server is left out, so the pandas only show with that module
 installed. A character that already has an item (in bags, bank or mail, or the spell it
@@ -135,12 +146,13 @@ administrator account, as SOAP requires). Players can't run them, game masters n
 answer one line of JSON:
 
 - `.coinshop list <account id>`: the wallet balance, the account's characters, and every
-  offer with the characters that own it already (`owned`) or can't use it (`cannot`). The
-  command reads the account's characters from the database on the world thread: cache its
+  offer with the characters that own it already (`owned`) or can't use it (`cannot`), the
+  account's progression `phase`, and per offer its `phase`, whether it is `locked` and what
+  unlocks it (`unlock`). The command reads the account's characters from the database on the world thread: cache its
   answer for a little while rather than calling it on every click.
 - `.coinshop buy <account id> <offer id> <character guid>`: `{"ok":true,"balance":..,"message":..}`,
   or `{"ok":false,"error":..,"message":..}` with error `closed`, `no_offer`, `no_character`,
-  `busy` (a character of the account is logging in), `owned`, `cannot` or `balance`. The coins and the order are written in one transaction.
+  `busy` (a character of the account is logging in), `locked`, `owned`, `cannot` or `balance`. The coins and the order are written in one transaction.
 
 The caller decides who the account is (a login of its own), so keep SOAP away from players.
 `.coinshop reload` reads the table again.
@@ -197,6 +209,7 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
 | `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |
 | `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters: a mount one character knows isn't sold to the others |
+| `BossCoins.Shop.ProgressionGate` | `1` | `1`: an offer with a `phase` stays locked until a character of the account has reached that progression phase. `0`: everything is for sale to everyone |
 
 All of them reload with `.reload config`.
 
@@ -329,7 +342,12 @@ Category: Dungeons & Raids
 - Your wallet now shows in the **Currency** tab of the character window, under
   *Account Wallet*, so you can see your Reals without typing `.wallet`.
 - The wallet pays for the new **coin shop**: character renames, new looks, race and faction
-  changes, red panda companions and Great Panda mounts. Bought items arrive by mail.
+  changes, red panda companions and red panda mounts. Bought items arrive by mail.
+- **70 new mounts** in the coin shop, from Grrlocs to Chaos-Forged gryphons and Witchwick's
+  Riders. Most fly, wherever flying mounts can. They unlock as you progress: each shows what
+  opens it, and your furthest character on the account opens it for all of them.
+- The Great Panda mounts are now the **Meeksi**: Rollingpaw, Rufflefur, Softpaw, Teatuft and
+  Brewthief. In the shop they unlock with the same raids as at Nari Rustpaw.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.
