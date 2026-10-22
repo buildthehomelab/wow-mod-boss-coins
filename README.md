@@ -129,10 +129,13 @@ list. As shipped:
 (the `phase` column). Until a character of the account has reached it, the offer is listed as
 locked, with what unlocks it ("Defeat Ragnaros in Molten Core"), and the shop won't sell it to
 any character of the account. The account's furthest character counts, so a main opens the shop
-for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The
-70 retail mounts are spread out: the ground and water mounts over the vanilla phases (1-7), the
-flyers over The Burning Crusade and Wrath of the Lich King (8-18), a few with every raid tier.
-Without mod-individual-progression (no quest 66001 on the server) every offer is for sale.
+for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The 70 retail
+mounts are spread out in their families: the ground and water mounts over the vanilla phases
+(1-7), the flyers over The Burning Crusade and Wrath of the Lich King (8-18), when flying comes, a
+few with every raid tier. An offer past mod-individual-progression's `ProgressionLimit` stays
+locked and says which expansion brings it ("Comes to the realm with The Burning Crusade") until
+the limit is raised. Without mod-individual-progression (no quest 66001 on the server) every
+offer is for sale.
 
 An item that isn't on the server is left out, so the pandas only show with that module
 installed. A character that already has an item (in bags, bank or mail, or the spell it

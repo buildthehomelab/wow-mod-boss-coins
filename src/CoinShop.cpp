@@ -110,12 +110,14 @@ namespace
         bool enabled = true;
         bool accountWideSpells = false;
         bool progressionGate = true;
+        uint32 progressionLimit = 0;    // mod-individual-progression's own: no phase past it, 0 = none
     };
 
     // mod-individual-progression keeps a character's phase as rewarded hidden quests: 66000 +
     // phase, for every phase it has reached. Phases run from 0 (new character) to 18.
     constexpr uint32 PROGRESSION_QUEST = 66000;
     constexpr uint8 PROGRESSION_LAST_PHASE = 18;
+    constexpr uint8 PROGRESSION_WOTLK_PHASE = 14;   // Wrath's raids from here on; 8-13 are The Burning Crusade's
 
     // What takes a character into each phase, for the launcher's "locked" offers.
     char const* PhaseUnlock(uint8 phase)
@@ -344,6 +346,26 @@ namespace
                     phase = std::max<uint8>(phase, result->Fetch()[0].Get<uint32>() - PROGRESSION_QUEST);
 
         return phase;
+    }
+
+    // Past the realm's progression limit an offer can't be opened yet: it waits for the realm to
+    // move on to its expansion.
+    bool PastLimit(Offer const& offer)
+    {
+        return shopConfig.progressionLimit && offer.phase > shopConfig.progressionLimit;
+    }
+
+    char const* Expansion(uint8 phase)
+    {
+        return phase >= PROGRESSION_WOTLK_PHASE ? "Wrath of the Lich King" : "The Burning Crusade";
+    }
+
+    // What opens a locked offer.
+    std::string UnlockText(Offer const& offer)
+    {
+        if (PastLimit(offer))
+            return fmt::format("Comes to the realm with {}", Expansion(offer.phase));
+        return PhaseUnlock(offer.phase);
     }
 
     bool Locked(Offer const& offer, uint8 accountPhase)
@@ -646,7 +668,7 @@ public:
             json += fmt::format("{}{{\"id\":{},\"category\":{},\"name\":{},\"description\":{},\"icon\":{},\"price\":{},"
                 "\"phase\":{},\"locked\":{},\"unlock\":{},\"owned\":[{}],\"cannot\":[{}]}}",
                 i ? "," : "", o.id, JsonString(o.category), JsonString(o.name), JsonString(o.description), JsonString(o.icon),
-                o.price, o.phase, locked ? "true" : "false", JsonString(locked ? PhaseUnlock(o.phase) : ""), IdList(have), IdList(cannot));
+                o.price, o.phase, locked ? "true" : "false", JsonString(locked ? UnlockText(o) : ""), IdList(have), IdList(cannot));
         }
 
         Answer(handler, json + "]}");
@@ -674,8 +696,9 @@ public:
             return Refuse(handler, "no_character", "That character isn't on your account.");
 
         if (Locked(*offer, AccountPhase(characters)))
-            return Refuse(handler, "locked", fmt::format("The {} isn't for sale to you yet. {} with any character to unlock it.",
-                offer->name, PhaseUnlock(offer->phase)));
+            return Refuse(handler, "locked", PastLimit(*offer)
+                ? fmt::format("The {} isn't for sale yet: it comes to the realm with {}.", offer->name, Expansion(offer->phase))
+                : fmt::format("The {} isn't for sale to you yet. {} with any character to unlock it.", offer->name, PhaseUnlock(offer->phase)));
 
         LoadSkills(characters, { offer });
         Character const& character = *itr;
@@ -763,6 +786,8 @@ public:
         shopConfig.enabled = sConfigMgr->GetOption<bool>("BossCoins.Shop.Enable", true);
         shopConfig.accountWideSpells = sConfigMgr->GetOption<bool>("BossCoins.Shop.AccountWideSpells", false);
         shopConfig.progressionGate = sConfigMgr->GetOption<bool>("BossCoins.Shop.ProgressionGate", true);
+        // mod-individual-progression's setting (one config for every module); absent without it.
+        shopConfig.progressionLimit = sConfigMgr->GetOption<uint32>("IndividualProgression.ProgressionLimit", 0, false);
     }
 };
 
