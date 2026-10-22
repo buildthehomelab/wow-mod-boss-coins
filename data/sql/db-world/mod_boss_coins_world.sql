@@ -1074,7 +1074,7 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (207, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 45, 1, 90600, 1, 0, 206, 1, 'mod-retail-pets: Gargantuan Grrloc'),
 (208, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 45, 1, 90601, 1, 0, 207, 1, 'mod-retail-pets: Tuskarr Hermit Crab'),
 (209, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 50, 2, 90602, 1, 0, 208, 1, 'mod-retail-pets: Gigantic Grrloc'),
-(210, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 50, 2, 90603, 1, 0, 209, 1, 'mod-retail-pets: Wondrous Wavewhisker'),
+(210, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 50, 2, 90603, 1, 0, 209, 1, 'mod-retail-pets: Wondrous Wavewhisker'),
 (211, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 55, 3, 90604, 1, 0, 210, 1, 'mod-retail-pets: Ginormous Grrloc'),
 (212, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 55, 3, 90605, 1, 0, 211, 1, 'mod-retail-pets: Kickin\' Kezan Waveshredder'),
 (213, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding.', '', 60, 4, 90606, 1, 0, 212, 1, 'mod-retail-pets: Grandiose Grrloc'),
