@@ -122,14 +122,14 @@ list. As shipped:
 | The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
 | Its five Meeksi red panda mounts | 40 each |
 | Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
-| Its 70 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 40 + 5 per progression phase: 45 to 130 |
+| Its 69 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 40 + 5 per progression phase: 45 to 130 |
 
 **Progression.** An offer can wait for a
 [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) phase
 (the `phase` column). Until a character of the account has reached it, the offer is listed as
 locked, with what unlocks it ("Defeat Ragnaros in Molten Core"), and the shop won't sell it to
 any character of the account. The account's furthest character counts, so a main opens the shop
-for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The 70 retail
+for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The 69 retail
 mounts are spread out in their families: the ground and water mounts over the vanilla phases
 (1-7), the flyers over The Burning Crusade and Wrath of the Lich King (8-18), when flying comes, a
 few with every raid tier. An offer past mod-individual-progression's `ProgressionLimit` stays
@@ -346,7 +346,7 @@ Category: Dungeons & Raids
   *Account Wallet*, so you can see your Reals without typing `.wallet`.
 - The wallet pays for the new **coin shop**: character renames, new looks, race and faction
   changes, red panda companions and red panda mounts. Bought items arrive by mail.
-- **70 new mounts** in the coin shop, from Grrlocs to Chaos-Forged gryphons and Witchwick's
+- **69 new mounts** in the coin shop, from Grrlocs to Chaos-Forged gryphons and Witchwick's
   Riders. Most fly, wherever flying mounts can. They unlock as you progress: each shows what
   opens it, and your furthest character on the account opens it for all of them.
 - The Great Panda mounts are now the **Meeksi**: Rollingpaw, Rufflefur, Softpaw, Teatuft and

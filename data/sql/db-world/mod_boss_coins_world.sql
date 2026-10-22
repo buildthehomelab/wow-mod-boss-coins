@@ -1049,7 +1049,7 @@ SET @sql = IF(@phase_missing, 'ALTER TABLE `mod_boss_coins_shop` ADD COLUMN `pha
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
-DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276);
+DELETE FROM `mod_boss_coins_shop` WHERE `id` < 1000 AND `id` NOT IN (1, 2, 3, 4, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276);
 INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `phase`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES
 (1, 'service', '', 'Pick a new name for the character, at the character list.', '', 20, 0, 0, 1, 1, 10, 1, 'rename'),
 (2, 'service', '', 'Change the character\'s name, gender and looks, at the character list.', '', 20, 0, 0, 1, 2, 20, 1, 'customize'),
@@ -1124,7 +1124,6 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (257, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 115, 15, 90650, 1, 0, 256, 1, 'mod-retail-pets: Frostfall Groveglider'),
 (258, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 115, 15, 90651, 1, 0, 257, 1, 'mod-retail-pets: Gloombough Groveglider'),
 (259, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 115, 15, 90652, 1, 0, 258, 1, 'mod-retail-pets: Scorching Valor'),
-(260, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 115, 15, 90653, 1, 0, 259, 1, 'mod-retail-pets: Steel Prototype Panther MK-0'),
 (261, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 120, 16, 90654, 1, 0, 260, 1, 'mod-retail-pets: Amberback Arboon'),
 (262, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 120, 16, 90655, 1, 0, 261, 1, 'mod-retail-pets: Blossomback Arboon'),
 (263, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 120, 16, 90656, 1, 0, 262, 1, 'mod-retail-pets: Golden Ashened Cataclysm'),
