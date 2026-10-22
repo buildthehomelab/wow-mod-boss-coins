@@ -11,7 +11,8 @@
  * (BossCoins.Shop.AccountWideSpells = 1, with mod-accountwide-mounts / mod-accountwide-pets or
  * warblups/mod-accountwide), a mount or companion is bought for the ACCOUNT: nothing is mailed,
  * its spell is written to those modules' table (accountwide_mounts / accountwide_pets, which
- * they read at every login) and every character of the account in the game learns it at once.
+ * they read at every login) and, once that write is done, every real character of the account
+ * in the game learns it.
  * Such an offer is `account` in the listing, no character is `cannot`, and the account owns it
  * as soon as one character knows it. Without the table it is mailed as before.
  *
@@ -559,17 +560,15 @@ namespace
         return true;    // an answer, not a failed command: SOAP passes it on as it is
     }
 
-    void Deliver(Offer const& offer, uint32 account, std::vector<Character> const& characters, Character const& character,
-        CharacterDatabaseTransaction trans)
+    void Deliver(Offer const& offer, uint32 account, Character const& character, CharacterDatabaseTransaction trans)
     {
         if (AccountWide(offer))
         {
-            // Into the sharing module's table, which every character reads at its login; the ones
-            // in the game learn it now (their learning writes the same row again, harmlessly).
+            // Into the sharing module's table, which every character reads at its login. The
+            // characters in the game learn it once this write is done (TeachAccount): learning
+            // it first would hand it out, through the sharing module's own learn hook, even if
+            // the write with the coins failed.
             trans->Append("INSERT IGNORE INTO {} (account_id, spell) VALUES ({}, {})", ACCOUNT_TABLES[offer.accountKind], account, offer.teaches);
-            for (Character const& online : characters)
-                if (online.online && !online.online->HasSpell(offer.teaches))
-                    online.online->learnSpell(offer.teaches);
             return;
         }
 
@@ -605,24 +604,28 @@ namespace
             return;
 
         ChatHandler chat(player->GetSession());
-        if (AccountWide(offer))
-            chat.PSendSysMessage("You bought the {} in the shop. It's yours now, on every character of your account.", offer.name);
-        else if (offer.item)
+        if (offer.item)
             chat.PSendSysMessage("Pix Xizzix has mailed you the {} you bought in the shop. Check your mailbox.", offer.name);
         else
             chat.PSendSysMessage("You bought a {} in the shop. Log out to the character list to use it.", offer.name);
     }
 
-    // An account-wide purchase is told to every real character of the account in the game, not
-    // only the one it was bought "for".
-    void TellAccount(Offer const& offer, std::vector<Character> const& characters, Character const& character)
+    // An account-wide purchase, once its write is done: the account's real characters in the
+    // game (bots are left to the sharing module, which skips them too) learn the spell and are
+    // told. The others learn it from the table at their next login. Runs on the world thread,
+    // from the order's commit callback.
+    void TeachAccount(std::string const& name, uint32 spell, std::vector<uint32> const& guids)
     {
-        if (!AccountWide(offer))
-            return TellPlayer(offer, character);
+        for (uint32 guid : guids)
+        {
+            Player* player = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(guid));
+            if (!player || !player->GetSession() || !IsRealPlayer(player))
+                continue;
 
-        for (Character const& online : characters)
-            if (online.online && IsRealPlayer(online.online))
-                TellPlayer(offer, online);
+            if (!player->HasSpell(spell))
+                player->learnSpell(spell);
+            ChatHandler(player->GetSession()).PSendSysMessage("You bought the {} in the shop. It's yours now, on every character of your account.", name);
+        }
     }
 }
 
@@ -714,7 +717,12 @@ void BossCoins::Shop::Load()
     // off: .reload config can turn it on without a .coinshop reload.
     for (uint8 kind = ACCOUNT_MOUNTS; kind <= ACCOUNT_PETS; ++kind)
     {
-        accountTables[kind] = CharacterDatabase.Query("SHOW TABLES LIKE '{}'", ACCOUNT_TABLES[kind]) != nullptr;
+        // In a LIKE pattern an underscore matches any one character: escaped, so only the table
+        // itself counts.
+        std::string pattern;
+        for (char c : std::string_view(ACCOUNT_TABLES[kind]))
+            pattern += c == '_' ? "\\_" : std::string(1, c);
+        accountTables[kind] = CharacterDatabase.Query("SHOW TABLES LIKE '{}'", pattern) != nullptr;
         if (shopConfig.accountWideSpells && !accountTables[kind])
             LOG_INFO("server.loading", "mod-boss-coins: BossCoins.Shop.AccountWideSpells is on but the characters database has no {} table; "
                 "the shop mails {} to the character instead", ACCOUNT_TABLES[kind], kind == ACCOUNT_MOUNTS ? "mounts" : "companions");
@@ -837,10 +845,18 @@ public:
             return Refuse(handler, "balance", fmt::format("The {} costs {} coins, and your wallet holds {}.",
                 offer->name, offer->price, Wallet::Balance(account)));
 
-        Deliver(*offer, account, characters, character, trans);
+        Deliver(*offer, account, character, trans);
 
         uint64 key = Key(offer->id, character.guid);
         ++ordersInFlight[key];
+
+        // Who learns an account-wide purchase once it is written: the account's characters in
+        // the game now (looked up again then; one that logged out meanwhile learns at its login).
+        std::vector<uint32> onlineGuids;
+        if (accountWide)
+            for (Character const& c : characters)
+                if (c.online)
+                    onlineGuids.push_back(c.guid);
 
         bool watchLogin = offer->service && !character.online;
         if (watchLogin)
@@ -852,8 +868,12 @@ public:
         }
 
         orderCommits.AddCallback(CharacterDatabase.AsyncCommitTransaction(trans)).AfterComplete(
-            [key, account, watchLogin, offerId = offer->id, guid = character.guid, price = offer->price](bool success)
+            [key, account, watchLogin, offerId = offer->id, guid = character.guid, price = offer->price,
+             name = offer->name, teaches = accountWide ? offer->teaches : 0, onlineGuids = std::move(onlineGuids)](bool success)
             {
+                if (success && teaches)
+                    TeachAccount(name, teaches, onlineGuids);
+
                 auto itr = ordersInFlight.find(key);
                 if (itr != ordersInFlight.end() && !--itr->second)
                     ordersInFlight.erase(itr);
@@ -873,14 +893,15 @@ public:
                         offerId, guid, account, price, price);
             });
 
-        TellAccount(*offer, characters, character);
+        if (!accountWide)
+            TellPlayer(*offer, character);
 
         LOG_INFO("module", "mod-boss-coins: account {} bought shop offer {} ({}) for {} ({}){}, {} coins",
             account, offer->id, offer->name, character.name, character.guid, accountWide ? " and the whole account" : "", offer->price);
 
         std::string message = accountWide
             ? (character.online
-                ? fmt::format("The {} is yours: {} knows it now, and your other characters learn it when they log in.", offer->name, character.name)
+                ? fmt::format("The {} is yours: {} gets it right away, and your other characters learn it when they log in.", offer->name, character.name)
                 : fmt::format("The {} is yours: every character of your account learns it when it logs in.", offer->name))
             : offer->item
             ? fmt::format("The {} is in {}'s mailbox.", offer->name, character.name)
