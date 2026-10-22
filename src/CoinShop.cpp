@@ -7,6 +7,14 @@
  * Prices are in coins from the account wallet (CoinWallet.cpp). A price of 0 is a free offer:
  * the same rules (one per character, not for one that has it already), and no coins move.
  *
+ * On a server that shares mounts and companions between an account's characters
+ * (BossCoins.Shop.AccountWideSpells = 1, with mod-accountwide-mounts / mod-accountwide-pets or
+ * warblups/mod-accountwide), a mount or companion is bought for the ACCOUNT: nothing is mailed,
+ * its spell is written to those modules' table (accountwide_mounts / accountwide_pets, which
+ * they read at every login) and every character of the account in the game learns it at once.
+ * Such an offer is `account` in the listing, no character is `cannot`, and the account owns it
+ * as soon as one character knows it. Without the table it is mailed as before.
+ *
  * The launcher talks to the portal, and the portal to these two commands, over SOAP. They are
  * console commands: a player, a game master too, can't run them in game. Both answer one line
  * of JSON, errors included, so the portal never has to read a SOAP fault.
@@ -14,9 +22,10 @@
  * .coinshop list <account id>
  *     {"ok":true,"balance":12,"phase":3,"characters":[{"guid","name","race","class","gender",
  *     "level","online"}],"offers":[{"id","category","name","description","icon","price","phase",
- *     "locked","unlock","owned":[guids],"cannot":[guids]}]}. `owned`: characters that have it
- *     already (an item in their bags, bank or mail, or the spell it teaches; a service waiting
- *     for their next login; an order still being written). `cannot`: characters that can't use
+ *     "locked","unlock","account","owned":[guids],"cannot":[guids]}]}. `owned`: characters that
+ *     have it already (an item in their bags, bank or mail, or the spell it teaches; a service
+ *     waiting for their next login; an order still being written; every character for an
+ *     `account` offer the account has). `cannot`: characters that can't use
  *     the item: race, class, level, or a skill it needs (riding, for a mount). The top `phase`
  *     is the account's: the mod-individual-progression phase of its furthest character. An
  *     offer with a higher `phase` is `locked` for every character, and `unlock` says what
@@ -49,6 +58,7 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "SpellMgr.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 
@@ -72,6 +82,19 @@ namespace
         SERVICE_CHANGE_FACTION = 4,
     };
 
+    // What an item's spell is, for account-wide delivery: a mount (the Mounts skill line) or a
+    // companion (the Companions line), each with the table its sharing module keeps per account.
+    enum AccountKind : uint8
+    {
+        ACCOUNT_NONE   = 0,
+        ACCOUNT_MOUNTS = 1,
+        ACCOUNT_PETS   = 2,
+    };
+
+    // mod-accountwide-mounts and mod-accountwide-pets (and warblups/mod-accountwide before them):
+    // (account_id, spell), read at every login. Looked for at Shop::Load; see accountTables.
+    constexpr char const* ACCOUNT_TABLES[] = { "", "accountwide_mounts", "accountwide_pets" };
+
     struct Offer
     {
         uint32 id = 0;
@@ -85,6 +108,7 @@ namespace
         uint8 service = SERVICE_NONE;
         uint8 phase = 0;        // the progression phase the account must have reached
         uint32 teaches = 0;     // the spell the item teaches, if it is one that does
+        uint8 accountKind = ACCOUNT_NONE;   // what `teaches` is, when the account can be given it
         // what the item asks of the character that uses it
         uint32 requiredLevel = 0;
         uint32 requiredSkill = 0;
@@ -154,6 +178,10 @@ namespace
     // ever reaches a phase, so the phases are off. Set by Shop::Load.
     bool progressionQuests = false;
 
+    // Which of ACCOUNT_TABLES the characters database has, by AccountKind. Set by Shop::Load:
+    // a write to a table that isn't there would abort the core.
+    bool accountTables[3] = { false, false, false };
+
     // Read at startup and by .coinshop reload, both on the world thread, like every reader.
     std::vector<Offer> offers;
 
@@ -217,6 +245,28 @@ namespace
     uint64 Key(uint32 offer, uint32 guid)
     {
         return (uint64(offer) << 32) | guid;
+    }
+
+    // Bought for the account rather than a character: a mount or companion, on a server that
+    // shares them, with the sharing module's table to write it to.
+    bool AccountWide(Offer const& offer)
+    {
+        return shopConfig.accountWideSpells && offer.accountKind != ACCOUNT_NONE && accountTables[offer.accountKind];
+    }
+
+    // A mount is a spell on the Mounts skill line, a companion one on the Companions line: what
+    // puts them on the client's Mounts and Companions tabs, and what the sharing modules go by.
+    uint8 AccountKindOf(uint32 spellId)
+    {
+        SkillLineAbilityMapBounds bounds = sSpellMgr->GetSkillLineAbilityMapBounds(spellId);
+        for (auto itr = bounds.first; itr != bounds.second; ++itr)
+        {
+            if (itr->second->SkillLine == SKILL_MOUNTS)
+                return ACCOUNT_MOUNTS;
+            if (itr->second->SkillLine == SKILL_COMPANIONS)
+                return ACCOUNT_PETS;
+        }
+        return ACCOUNT_NONE;
     }
 
     std::string IdList(std::vector<uint32> const& ids)
@@ -289,7 +339,9 @@ namespace
     // learn it would only sit in the bags.
     std::string CannotUse(Offer const& offer, Character const& character)
     {
-        if (!offer.item)
+        // An account-wide mount or companion is for every character: the sharing module decides
+        // per character what it teaches and when (riding, level), nothing waits in anyone's bags.
+        if (!offer.item || AccountWide(offer))
             return "";
 
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(offer.item);
@@ -377,9 +429,31 @@ namespace
 
     // Which characters already have which offers, as Key(offer, guid). A character in the game
     // is asked directly; the database has an online character's last save, not its now.
-    std::unordered_set<uint64> Owned(std::vector<Character> const& characters, std::vector<Offer const*> const& wanted)
+    std::unordered_set<uint64> Owned(uint32 account, std::vector<Character> const& characters, std::vector<Offer const*> const& wanted)
     {
         std::unordered_set<uint64> owned;
+
+        // The account's own mounts and companions, as the sharing modules have them: a spell
+        // bought while nobody was in the game is there before any character knows it.
+        std::unordered_set<uint32> accountSpells;
+        for (uint8 kind = ACCOUNT_MOUNTS; kind <= ACCOUNT_PETS; ++kind)
+        {
+            std::vector<uint32> spells;
+            for (Offer const* offer : wanted)
+                if (offer->accountKind == kind && AccountWide(*offer))
+                    spells.push_back(offer->teaches);
+            if (spells.empty())
+                continue;
+
+            if (QueryResult result = CharacterDatabase.Query("SELECT spell FROM {} WHERE account_id = {} AND spell IN ({})",
+                ACCOUNT_TABLES[kind], account, IdList(spells)))
+            {
+                do
+                {
+                    accountSpells.insert(result->Fetch()[0].Get<uint32>());
+                } while (result->NextRow());
+            }
+        }
 
         std::vector<uint32> offline;
         for (Character const& character : characters)
@@ -433,6 +507,7 @@ namespace
         for (Offer const* offer : wanted)
         {
             bool anyKnows = false;
+            bool anyHas = false;
             for (Character const& character : characters)
             {
                 bool has = false;
@@ -456,13 +531,16 @@ namespace
 
                 anyKnows |= knows;
                 has |= ordersInFlight.count(Key(offer->id, character.guid)) > 0;
+                anyHas |= has;
                 if (has)
                     owned.insert(Key(offer->id, character.guid));
             }
 
             // With account-wide mounts and companions, one character knowing it is all of them
-            // knowing it, at their next login.
-            if (anyKnows && shopConfig.accountWideSpells)
+            // knowing it, at their next login. An offer bought for the account is the account's
+            // from the order on (in flight, in the sharing module's table, or known to one).
+            bool accountHas = AccountWide(*offer) && (anyHas || accountSpells.count(offer->teaches));
+            if ((anyKnows && shopConfig.accountWideSpells) || accountHas)
                 for (Character const& character : characters)
                     owned.insert(Key(offer->id, character.guid));
         }
@@ -481,8 +559,20 @@ namespace
         return true;    // an answer, not a failed command: SOAP passes it on as it is
     }
 
-    void Deliver(Offer const& offer, Character const& character, CharacterDatabaseTransaction trans)
+    void Deliver(Offer const& offer, uint32 account, std::vector<Character> const& characters, Character const& character,
+        CharacterDatabaseTransaction trans)
     {
+        if (AccountWide(offer))
+        {
+            // Into the sharing module's table, which every character reads at its login; the ones
+            // in the game learn it now (their learning writes the same row again, harmlessly).
+            trans->Append("INSERT IGNORE INTO {} (account_id, spell) VALUES ({}, {})", ACCOUNT_TABLES[offer.accountKind], account, offer.teaches);
+            for (Character const& online : characters)
+                if (online.online && !online.online->HasSpell(offer.teaches))
+                    online.online->learnSpell(offer.teaches);
+            return;
+        }
+
         if (offer.item)
         {
             MailDraft draft(fmt::format("Your order: {}", offer.name),
@@ -515,10 +605,24 @@ namespace
             return;
 
         ChatHandler chat(player->GetSession());
-        if (offer.item)
+        if (AccountWide(offer))
+            chat.PSendSysMessage("You bought the {} in the shop. It's yours now, on every character of your account.", offer.name);
+        else if (offer.item)
             chat.PSendSysMessage("Pix Xizzix has mailed you the {} you bought in the shop. Check your mailbox.", offer.name);
         else
             chat.PSendSysMessage("You bought a {} in the shop. Log out to the character list to use it.", offer.name);
+    }
+
+    // An account-wide purchase is told to every real character of the account in the game, not
+    // only the one it was bought "for".
+    void TellAccount(Offer const& offer, std::vector<Character> const& characters, Character const& character)
+    {
+        if (!AccountWide(offer))
+            return TellPlayer(offer, character);
+
+        for (Character const& online : characters)
+            if (online.online && IsRealPlayer(online.online))
+                TellPlayer(offer, online);
     }
 }
 
@@ -594,6 +698,8 @@ void BossCoins::Shop::Load()
                 for (auto const& spell : proto->Spells)
                     if (spell.SpellTrigger == ITEM_SPELLTRIGGER_LEARN_SPELL_ID && spell.SpellId > 0)
                         offer.teaches = uint32(spell.SpellId);
+                if (offer.teaches)
+                    offer.accountKind = AccountKindOf(offer.teaches);
             }
             else if (offer.name.empty())
                 offer.name = ServiceName(offer.service);
@@ -603,6 +709,16 @@ void BossCoins::Shop::Load()
     }
 
     LOG_INFO("server.loading", "mod-boss-coins: {} shop offer(s) loaded, {} skipped", offers.size(), skipped);
+
+    // The sharing modules' tables, for account-wide purchases. Looked for even with the setting
+    // off: .reload config can turn it on without a .coinshop reload.
+    for (uint8 kind = ACCOUNT_MOUNTS; kind <= ACCOUNT_PETS; ++kind)
+    {
+        accountTables[kind] = CharacterDatabase.Query("SHOW TABLES LIKE '{}'", ACCOUNT_TABLES[kind]) != nullptr;
+        if (shopConfig.accountWideSpells && !accountTables[kind])
+            LOG_INFO("server.loading", "mod-boss-coins: BossCoins.Shop.AccountWideSpells is on but the characters database has no {} table; "
+                "the shop mails {} to the character instead", ACCOUNT_TABLES[kind], kind == ACCOUNT_MOUNTS ? "mounts" : "companions");
+    }
 
     progressionQuests = sObjectMgr->GetQuestTemplate(PROGRESSION_QUEST + 1) != nullptr;
     if (!progressionQuests && std::any_of(offers.begin(), offers.end(), [](Offer const& offer) { return offer.phase; }))
@@ -642,7 +758,7 @@ public:
         for (Offer const& offer : offers)
             all.push_back(&offer);
         LoadSkills(characters, all);
-        std::unordered_set<uint64> owned = Owned(characters, all);
+        std::unordered_set<uint64> owned = Owned(account, characters, all);
         uint8 phase = AccountPhase(characters);
 
         std::string json = fmt::format("{{\"ok\":true,\"balance\":{},\"phase\":{},\"characters\":[", Wallet::Balance(account), phase);
@@ -668,9 +784,10 @@ public:
 
             bool locked = Locked(o, phase);
             json += fmt::format("{}{{\"id\":{},\"category\":{},\"name\":{},\"description\":{},\"icon\":{},\"price\":{},"
-                "\"phase\":{},\"locked\":{},\"unlock\":{},\"owned\":[{}],\"cannot\":[{}]}}",
+                "\"phase\":{},\"locked\":{},\"unlock\":{},\"account\":{},\"owned\":[{}],\"cannot\":[{}]}}",
                 i ? "," : "", o.id, JsonString(o.category), JsonString(o.name), JsonString(o.description), JsonString(o.icon),
-                o.price, o.phase, locked ? "true" : "false", JsonString(locked ? UnlockText(o) : ""), IdList(have), IdList(cannot));
+                o.price, o.phase, locked ? "true" : "false", JsonString(locked ? UnlockText(o) : ""), AccountWide(o) ? "true" : "false",
+                IdList(have), IdList(cannot));
         }
 
         Answer(handler, json + "]}");
@@ -707,9 +824,12 @@ public:
         if (std::string why = CannotUse(*offer, character); !why.empty())
             return Refuse(handler, "cannot", why);
 
-        if (Owned(characters, { offer }).count(Key(offer->id, character.guid)))
+        bool accountWide = AccountWide(*offer);
+        if (Owned(account, characters, { offer }).count(Key(offer->id, character.guid)))
             return Refuse(handler, "owned", offer->service
                 ? fmt::format("{} has a {} waiting already: log in to the character list to use it.", character.name, offer->name)
+                : accountWide
+                ? fmt::format("Your account has the {} already: every character of yours can use it.", offer->name)
                 : fmt::format("{} has the {} already. Look in the bags, the bank and the mailbox.", character.name, offer->name));
 
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
@@ -717,7 +837,7 @@ public:
             return Refuse(handler, "balance", fmt::format("The {} costs {} coins, and your wallet holds {}.",
                 offer->name, offer->price, Wallet::Balance(account)));
 
-        Deliver(*offer, character, trans);
+        Deliver(*offer, account, characters, character, trans);
 
         uint64 key = Key(offer->id, character.guid);
         ++ordersInFlight[key];
@@ -753,12 +873,16 @@ public:
                         offerId, guid, account, price, price);
             });
 
-        TellPlayer(*offer, character);
+        TellAccount(*offer, characters, character);
 
-        LOG_INFO("module", "mod-boss-coins: account {} bought shop offer {} ({}) for {} ({}), {} coins",
-            account, offer->id, offer->name, character.name, character.guid, offer->price);
+        LOG_INFO("module", "mod-boss-coins: account {} bought shop offer {} ({}) for {} ({}){}, {} coins",
+            account, offer->id, offer->name, character.name, character.guid, accountWide ? " and the whole account" : "", offer->price);
 
-        std::string message = offer->item
+        std::string message = accountWide
+            ? (character.online
+                ? fmt::format("The {} is yours: {} knows it now, and your other characters learn it when they log in.", offer->name, character.name)
+                : fmt::format("The {} is yours: every character of your account learns it when it logs in.", offer->name))
+            : offer->item
             ? fmt::format("The {} is in {}'s mailbox.", offer->name, character.name)
             : fmt::format("{} gets the {} at the character list.", character.name, offer->name);
         Answer(handler, fmt::format("{{\"ok\":true,\"balance\":{},\"message\":{}}}", Wallet::Balance(account), JsonString(message)));

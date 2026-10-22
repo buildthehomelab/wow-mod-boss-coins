@@ -85,9 +85,13 @@ BossCoins.Shop.Enable = 1
 #
 #    BossCoins.Shop.AccountWideSpells
 #        Description: 1 if mounts and companions are shared by all the characters of an
-#                     account on your server (a module that teaches every character what one
-#                     knows). Then a shop item that teaches a spell one character knows counts
-#                     as owned by every character of the account, and isn't sold again.
+#                     account on your server (mod-accountwide-mounts, mod-accountwide-pets or
+#                     mod-accountwide). Then a mount or companion is bought for the account:
+#                     nothing is mailed, its spell is written to that module's table
+#                     (accountwide_mounts / accountwide_pets) and every character of the
+#                     account in the game learns it at once; the others learn it when they log
+#                     in. One the account has (one character knows it, or it is in the table)
+#                     isn't sold again. Without the table the item is mailed as with 0.
 #        Default:     0
 #
 
