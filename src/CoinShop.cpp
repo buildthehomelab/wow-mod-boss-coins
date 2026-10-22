@@ -12,16 +12,21 @@
  * of JSON, errors included, so the portal never has to read a SOAP fault.
  *
  * .coinshop list <account id>
- *     {"ok":true,"balance":12,"characters":[{"guid","name","race","class","gender","level",
- *     "online"}],"offers":[{"id","category","name","description","icon","price","owned":[guids],
- *     "cannot":[guids]}]}. `owned`: characters that have it already (an item in their bags,
- *     bank or mail, or the spell it teaches; a service waiting for their next login; an order
- *     still being written). `cannot`: characters that can't use the item: race, class, level,
- *     or a skill it needs (riding, for a mount).
+ *     {"ok":true,"balance":12,"phase":3,"characters":[{"guid","name","race","class","gender",
+ *     "level","online"}],"offers":[{"id","category","name","description","icon","price","phase",
+ *     "locked","unlock","owned":[guids],"cannot":[guids]}]}. `owned`: characters that have it
+ *     already (an item in their bags, bank or mail, or the spell it teaches; a service waiting
+ *     for their next login; an order still being written). `cannot`: characters that can't use
+ *     the item: race, class, level, or a skill it needs (riding, for a mount). The top `phase`
+ *     is the account's: the mod-individual-progression phase of its furthest character. An
+ *     offer with a higher `phase` is `locked` for every character, and `unlock` says what
+ *     opens it, as a sentence ("Defeat Ragnaros in Molten Core with any character to unlock it.";
+ *     past mod-individual-progression's ProgressionLimit "Comes to the realm with The Burning
+ *     Crusade.").
  *
  * .coinshop buy <account id> <offer id> <character guid>
  *     {"ok":true,"balance":7,"message":"..."} or {"ok":false,"error":"<code>","message":"..."}.
- *     Codes: closed, no_offer, no_character, busy, owned, cannot, balance. The coins are taken
+ *     Codes: closed, no_offer, no_character, busy, locked, owned, cannot, balance. The coins are taken
  *     and the order written in one transaction; the message says why a refusal is one.
  *
  * .coinshop reload     reads mod_boss_coins_shop again (also for game masters in game)
@@ -78,6 +83,7 @@ namespace
         uint32 item = 0;
         uint32 count = 1;
         uint8 service = SERVICE_NONE;
+        uint8 phase = 0;        // the progression phase the account must have reached
         uint32 teaches = 0;     // the spell the item teaches, if it is one that does
         // what the item asks of the character that uses it
         uint32 requiredLevel = 0;
@@ -105,9 +111,48 @@ namespace
     {
         bool enabled = true;
         bool accountWideSpells = false;
+        bool progressionGate = true;
+        uint32 progressionLimit = 0;    // mod-individual-progression's own: no phase past it, 0 = none
     };
 
+    // mod-individual-progression keeps a character's phase as rewarded hidden quests: 66000 +
+    // phase, for every phase it has reached. Phases run from 0 (new character) to 18.
+    constexpr uint32 PROGRESSION_QUEST = 66000;
+    constexpr uint8 PROGRESSION_LAST_PHASE = 18;
+    constexpr uint8 PROGRESSION_WOTLK_PHASE = 13;   // Kil'jaeden's kill opens Northrend; 8-12 are The Burning Crusade's
+
+    // What takes a character into each phase, for the launcher's "locked" offers.
+    char const* PhaseUnlock(uint8 phase)
+    {
+        switch (phase)
+        {
+            case 1:  return "Defeat Ragnaros in Molten Core";
+            case 2:  return "Defeat Onyxia in Onyxia's Lair";
+            case 3:  return "Defeat Nefarian in Blackwing Lair";
+            case 4:  return "Bang the Scarab Gong";
+            case 5:  return "Finish the quest Chaos and Destruction";
+            case 6:  return "Defeat C'Thun in the Temple of Ahn'Qiraj";
+            case 7:  return "Defeat Kel'Thuzad in Naxxramas (level 60)";
+            case 8:  return "Finish the quest Into the Breach";
+            case 9:  return "Defeat Prince Malchezaar in Karazhan";
+            case 10: return "Defeat Kael'thas Sunstrider in Tempest Keep";
+            case 11:
+            case 12: return "Defeat Illidan Stormrage in the Black Temple";
+            case 13: return "Defeat Kil'jaeden in the Sunwell Plateau";
+            case 14: return "Defeat Kel'Thuzad in Naxxramas (level 80)";
+            case 15: return "Defeat Yogg-Saron in Ulduar";
+            case 16: return "Defeat Anub'arak in the Trial of the Crusader";
+            case 17: return "Defeat the Lich King in Icecrown Citadel";
+            case 18: return "Defeat Halion in the Ruby Sanctum";
+            default: return "";
+        }
+    }
+
     ShopConfig shopConfig;
+
+    // Whether the server has mod-individual-progression's phase quests. Without them nobody
+    // ever reaches a phase, so the phases are off. Set by Shop::Load.
+    bool progressionQuests = false;
 
     // Read at startup and by .coinshop reload, both on the world thread, like every reader.
     std::vector<Offer> offers;
@@ -271,6 +316,63 @@ namespace
         }
 
         return "";
+    }
+
+    // The account's phase: that of its furthest character. A character in the game is asked
+    // directly; the database has an online character's last save, not its now.
+    uint8 AccountPhase(std::vector<Character> const& characters)
+    {
+        uint8 phase = 0;
+        std::vector<uint32> offline;
+        for (Character const& character : characters)
+        {
+            if (!character.online)
+            {
+                offline.push_back(character.guid);
+                continue;
+            }
+
+            for (uint8 p = PROGRESSION_LAST_PHASE; p > phase; --p)
+                if (character.online->GetQuestRewardStatus(PROGRESSION_QUEST + p))
+                {
+                    phase = p;
+                    break;
+                }
+        }
+
+        if (!offline.empty())
+            if (QueryResult result = CharacterDatabase.Query("SELECT MAX(quest) FROM character_queststatus_rewarded "
+                "WHERE guid IN ({}) AND quest BETWEEN {} AND {} AND active = 1",
+                IdList(offline), PROGRESSION_QUEST + 1, PROGRESSION_QUEST + PROGRESSION_LAST_PHASE))
+                if (!result->Fetch()[0].IsNull())
+                    phase = std::max<uint8>(phase, result->Fetch()[0].Get<uint32>() - PROGRESSION_QUEST);
+
+        return phase;
+    }
+
+    // Past the realm's progression limit an offer can't be opened yet: it waits for the realm to
+    // move on to its expansion.
+    bool PastLimit(Offer const& offer)
+    {
+        return shopConfig.progressionLimit && offer.phase > shopConfig.progressionLimit;
+    }
+
+    char const* Expansion(uint8 phase)
+    {
+        return phase >= PROGRESSION_WOTLK_PHASE ? "Wrath of the Lich King" : "The Burning Crusade";
+    }
+
+    // What opens a locked offer, as the sentence the launcher shows.
+    std::string UnlockText(Offer const& offer)
+    {
+        if (PastLimit(offer))
+            return fmt::format("Comes to the realm with {}.", Expansion(offer.phase));
+        return fmt::format("{} with any character to unlock it.", PhaseUnlock(offer.phase));
+    }
+
+    bool Locked(Offer const& offer, uint8 accountPhase)
+    {
+        return shopConfig.progressionGate && progressionQuests && offer.phase > accountPhase;
     }
 
     // Which characters already have which offers, as Key(offer, guid). A character in the game
@@ -447,7 +549,7 @@ void BossCoins::Shop::Load()
     offers.clear();
 
     uint32 skipped = 0;
-    if (QueryResult result = WorldDatabase.Query("SELECT id, category, name, description, icon, price, item, count, service "
+    if (QueryResult result = WorldDatabase.Query("SELECT id, category, name, description, icon, price, item, count, service, phase "
         "FROM mod_boss_coins_shop WHERE enabled = 1 ORDER BY sort, id"))
     {
         do
@@ -463,6 +565,7 @@ void BossCoins::Shop::Load()
             offer.item = fields[6].Get<uint32>();
             offer.count = std::max<uint32>(fields[7].Get<uint8>(), 1);
             offer.service = fields[8].Get<uint8>();
+            offer.phase = std::min<uint8>(fields[9].Get<uint8>(), PROGRESSION_LAST_PHASE);
 
             if ((offer.item != 0) == (offer.service != SERVICE_NONE)
                 || (offer.service && ServiceFlag(offer.service) == AT_LOGIN_NONE))
@@ -500,6 +603,10 @@ void BossCoins::Shop::Load()
     }
 
     LOG_INFO("server.loading", "mod-boss-coins: {} shop offer(s) loaded, {} skipped", offers.size(), skipped);
+
+    progressionQuests = sObjectMgr->GetQuestTemplate(PROGRESSION_QUEST + 1) != nullptr;
+    if (!progressionQuests && std::any_of(offers.begin(), offers.end(), [](Offer const& offer) { return offer.phase; }))
+        LOG_INFO("server.loading", "mod-boss-coins: no mod-individual-progression quests on this server; the shop sells every offer to everyone");
 }
 
 class BossCoinsShopCommandScript : public CommandScript
@@ -536,8 +643,9 @@ public:
             all.push_back(&offer);
         LoadSkills(characters, all);
         std::unordered_set<uint64> owned = Owned(characters, all);
+        uint8 phase = AccountPhase(characters);
 
-        std::string json = fmt::format("{{\"ok\":true,\"balance\":{},\"characters\":[", Wallet::Balance(account));
+        std::string json = fmt::format("{{\"ok\":true,\"balance\":{},\"phase\":{},\"characters\":[", Wallet::Balance(account), phase);
         for (size_t i = 0; i < characters.size(); ++i)
         {
             Character const& c = characters[i];
@@ -558,10 +666,11 @@ public:
                     cannot.push_back(c.guid);
             }
 
+            bool locked = Locked(o, phase);
             json += fmt::format("{}{{\"id\":{},\"category\":{},\"name\":{},\"description\":{},\"icon\":{},\"price\":{},"
-                "\"owned\":[{}],\"cannot\":[{}]}}",
+                "\"phase\":{},\"locked\":{},\"unlock\":{},\"owned\":[{}],\"cannot\":[{}]}}",
                 i ? "," : "", o.id, JsonString(o.category), JsonString(o.name), JsonString(o.description), JsonString(o.icon),
-                o.price, IdList(have), IdList(cannot));
+                o.price, o.phase, locked ? "true" : "false", JsonString(locked ? UnlockText(o) : ""), IdList(have), IdList(cannot));
         }
 
         Answer(handler, json + "]}");
@@ -587,6 +696,11 @@ public:
         auto itr = std::find_if(characters.begin(), characters.end(), [guid](Character const& c) { return c.guid == guid; });
         if (itr == characters.end())
             return Refuse(handler, "no_character", "That character isn't on your account.");
+
+        if (Locked(*offer, AccountPhase(characters)))
+            return Refuse(handler, "locked", PastLimit(*offer)
+                ? fmt::format("The {} isn't for sale yet: it comes to the realm with {}.", offer->name, Expansion(offer->phase))
+                : fmt::format("The {} isn't for sale to you yet. {} with any character to unlock it.", offer->name, PhaseUnlock(offer->phase)));
 
         LoadSkills(characters, { offer });
         Character const& character = *itr;
@@ -673,6 +787,9 @@ public:
     {
         shopConfig.enabled = sConfigMgr->GetOption<bool>("BossCoins.Shop.Enable", true);
         shopConfig.accountWideSpells = sConfigMgr->GetOption<bool>("BossCoins.Shop.AccountWideSpells", false);
+        shopConfig.progressionGate = sConfigMgr->GetOption<bool>("BossCoins.Shop.ProgressionGate", true);
+        // mod-individual-progression's setting (one config for every module); absent without it.
+        shopConfig.progressionLimit = sConfigMgr->GetOption<uint32>("IndividualProgression.ProgressionLimit", 0, false);
     }
 };
 

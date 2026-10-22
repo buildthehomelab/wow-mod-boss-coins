@@ -35,8 +35,10 @@ Both read the same files in data/, so the server and the client can't disagree:
                Ids below SHOP_OWN_IDS are the module's. Its SQL adds them and keeps what they
                are up to date, but `price`, `sort` and `enabled` only on a new row: a server's
                own prices stay. A `price` of 0 is a free offer: still one per character, and
-               not for a character that already has it. Add your own rows to the table from
-               SHOP_OWN_IDS on.
+               not for a character that already has it. `phase` is the mod-individual-progression
+               phase (0-18) the account's furthest character must have reached before the offer
+               can be bought (0 = from the start); the shop shows it locked until then. Add your
+               own rows to the table from SHOP_OWN_IDS on.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -98,6 +100,8 @@ PIX_SCRIPT = "npc_boss_coins_pix"   # adds the account wallet's options to her m
 
 SHOP_OWN_IDS = 1000             # shop offers below this id are the module's
 SHOP_SERVICES = {1: "rename", 2: "customize", 3: "race change", 4: "faction change"}
+SHOP_PHASES = range(0, 19)       # mod-individual-progression's phases, 0 (new character) to 18
+SHOP_PHASE_COMMENT = "mod-individual-progression phase the furthest character of the account must have reached; 0 = from the start"
 
 CLASS_MASKS = {"warrior": 1, "paladin": 2, "hunter": 4, "rogue": 8, "priest": 16, "death knight": 32,
                "shaman": 64, "mage": 128, "warlock": 256, "druid": 1024}
@@ -179,7 +183,7 @@ def load():
     shop = []
     for r in read_tsv("shop.tsv"):
         offer = dict(id=int(r["id"]), category=r["category"], item=int(r["item"]), count=int(r["count"]),
-                     service=int(r["service"]), price=int(r["price"]), sort=int(r["sort"]), name=r["name"],
+                     service=int(r["service"]), price=int(r["price"]), phase=int(r["phase"]), sort=int(r["sort"]), name=r["name"],
                      description=r["description"], icon=r["icon"], comment=r["comment"])
         if not 0 < offer["id"] < SHOP_OWN_IDS or offer["id"] in [o["id"] for o in shop]:
             sys.exit("shop.tsv: id %d is listed twice or isn't below %d" % (offer["id"], SHOP_OWN_IDS))
@@ -187,6 +191,8 @@ def load():
             sys.exit("shop.tsv: offer %d needs either an item or a service (1-4)" % offer["id"])
         if offer["price"] < 0 or not 0 < offer["count"] < 256:
             sys.exit("shop.tsv: offer %d needs a price (0 = free) and a count of 1-255" % offer["id"])
+        if offer["phase"] not in SHOP_PHASES:
+            sys.exit("shop.tsv: offer %d has phase %d, which is no progression phase (0-18)" % (offer["id"], offer["phase"]))
         shop.append(offer)
     return costs, list(pages.values()), sources, credits, shop
 
@@ -340,8 +346,9 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w("-- offer whose item isn't on the server is left out. Ids below %d are this module's: what\n" % SHOP_OWN_IDS)
         w("-- they are follows the module, but `price`, `sort` and `enabled` are only set when an offer\n")
         w("-- is new, so prices you change stay. An offer the module no longer has is removed. Add your\n")
-        w("-- own offers from %d on, they stay. The server reads the table at startup and on\n" % SHOP_OWN_IDS)
-        w("-- .coinshop reload.\n")
+        w("-- own offers from %d on, they stay. `phase` is the mod-individual-progression phase the\n" % SHOP_OWN_IDS)
+        w("-- account's furthest character must have reached before the offer can be bought. The\n")
+        w("-- server reads the table at startup and on .coinshop reload.\n")
         w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop` (\n")
         w("  `id` INT UNSIGNED NOT NULL,\n")
         w("  `category` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'the launcher groups offers by it: mount, pet, service, ...',\n")
@@ -352,20 +359,28 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w("  `item` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'item_template entry, mailed',\n")
         w("  `count` TINYINT UNSIGNED NOT NULL DEFAULT 1,\n")
         w("  `service` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 rename, 2 customize, 3 race change, 4 faction change',\n")
+        w("  `phase` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT %s,\n" % sql_str(SHOP_PHASE_COMMENT))
         w("  `sort` INT NOT NULL DEFAULT 0,\n")
         w("  `enabled` TINYINT UNSIGNED NOT NULL DEFAULT 1,\n")
         w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
         w("  PRIMARY KEY (`id`)\n")
         w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: the launcher shop';\n")
+        w("-- Tables from before `phase` existed get the column. MySQL has no ADD COLUMN IF NOT EXISTS.\n")
+        w("SET @phase_missing = (SELECT COUNT(*) = 0 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() "
+          "AND TABLE_NAME = 'mod_boss_coins_shop' AND COLUMN_NAME = 'phase');\n")
+        w("SET @sql = IF(@phase_missing, %s, 'DO 0');\n" % sql_str(
+            "ALTER TABLE `mod_boss_coins_shop` ADD COLUMN `phase` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT %s AFTER `service`"
+            % sql_str(SHOP_PHASE_COMMENT)))
+        w("PREPARE stmt FROM @sql;\nEXECUTE stmt;\nDEALLOCATE PREPARE stmt;\n")
         w("DELETE FROM `mod_boss_coins_shop` WHERE `id` < %d AND `id` NOT IN (%s);\n" % (
             SHOP_OWN_IDS, id_list(o["id"] for o in shop)))
-        w("INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES\n")
-        w(",\n".join("(%d, %s, %s, %s, %s, %d, %d, %d, %d, %d, 1, %s)" % (
+        w("INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `icon`, `price`, `phase`, `item`, `count`, `service`, `sort`, `enabled`, `comment`) VALUES\n")
+        w(",\n".join("(%d, %s, %s, %s, %s, %d, %d, %d, %d, %d, %d, 1, %s)" % (
             o["id"], sql_str(o["category"]), sql_str(o["name"]), sql_str(o["description"]), sql_str(o["icon"]),
-            o["price"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + "\n")
+            o["price"], o["phase"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + "\n")
         w("ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), "
-          "`icon` = VALUES(`icon`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), "
-          "`comment` = VALUES(`comment`);\n")
+          "`icon` = VALUES(`icon`), `phase` = VALUES(`phase`), `item` = VALUES(`item`), `count` = VALUES(`count`), "
+          "`service` = VALUES(`service`), `comment` = VALUES(`comment`);\n")
     print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses, %d shop offers" % (
         path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits), len(shop)))
 

@@ -92,3 +92,17 @@ BossCoins.Shop.Enable = 1
 #
 
 BossCoins.Shop.AccountWideSpells = 0
+
+#
+#    BossCoins.Shop.ProgressionGate
+#        Description: 1: a shop offer with a progression phase is locked until a character of
+#                     the account has reached that mod-individual-progression phase (the
+#                     account's furthest character counts). 0: every offer is for sale to
+#                     everyone. A server without mod-individual-progression sells everything
+#                     either way. An offer past mod-individual-progression's own
+#                     IndividualProgression.ProgressionLimit stays locked and says which
+#                     expansion brings it.
+#        Default:     1
+#
+
+BossCoins.Shop.ProgressionGate = 1
