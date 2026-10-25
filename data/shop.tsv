@@ -88,3 +88,13 @@ id	category	item	count	service	price	phase	sort	name	description	icon	comment
 274	mount	90667	1	0	280	18	273		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Sunflare Driftmoth
 275	mount	90668	1	0	280	18	274		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Zothwing Darkseeker
 276	mount	90669	1	0	280	18	275		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Zothwing Deepseeker
+277	mount	90670	1	0	110	1	207		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Seabraid Stallion
+278	mount	90671	1	0	110	1	207		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Gilded Ravasaur
+279	mount	90672	1	0	130	3	211		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Illidari Felstalker
+280	mount	90673	1	0	140	4	212		A mount, mailed to the character. Sold to characters with Apprentice Riding.		mod-retail-pets: Armored Siege Kodo
+281	mount	54811	1	0	180	8	222		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		core: Celestial Steed
+282	mount	90674	1	0	180	8	222		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Imperial Quilen
+283	mount	90675	1	0	200	10	234		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Alabaster Stormtalon
+284	mount	90676	1	0	200	10	234		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Alabaster Thunderwing
+285	mount	90677	1	0	220	12	240		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Sapphire Skyblazer
+286	mount	90678	1	0	220	12	240		A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Ash'adar, Harbinger of Dawn
