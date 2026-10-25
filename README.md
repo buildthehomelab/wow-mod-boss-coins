@@ -131,14 +131,15 @@ character knows it or it is in the table. As shipped:
 | The ten red panda companions of [mod-retail-pets](https://github.com/buildthehomelab/wow-mod-retail-pets) | 10 each |
 | Its five Meeksi red panda mounts | 100 + 10 per progression phase: 110 to 180 |
 | Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
-| Its 69 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 100 + 10 per progression phase: 110 to 280 |
+| Its 78 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 100 + 10 per progression phase: 110 to 280 |
+| The core's Celestial Steed (item 54811) | 180 (phase 8) |
 
 **Progression.** An offer can wait for a
 [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) phase
 (the `phase` column). Until a character of the account has reached it, the offer is listed as
 locked, with what unlocks it ("Defeat Ragnaros in Molten Core with any character to unlock it."), and the shop won't sell it to
 any character of the account. The account's furthest character counts, so a main opens the shop
-for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The 69 retail
+for its alts. The five Meeksi wait for the same phases as at Nari Rustpaw (1, 3, 6, 7 and 8). The 78 retail
 mounts are spread out in their families, a few with every raid tier: the ground and water
 mounts and two early flyers (the Wondrous Wavewhisker and the Kickin' Kezan Waveshredder) over the
 vanilla phases (1-7), the other flyers over The Burning Crusade and Wrath of the Lich King (8-18),
@@ -360,6 +361,10 @@ Category: Dungeons & Raids
 - **69 new mounts** in the coin shop, from Grrlocs to Chaos-Forged gryphons and Witchwick's
   Riders. Most fly, wherever flying mounts can. They unlock as you progress: each shows what
   opens it, and your furthest character on the account opens it for all of them.
+- **10 more shop mounts**: the **Celestial Steed**, the **Imperial Quilen**, the **Alabaster
+  Stormtalon** and **Thunderwing**, the **Sapphire Skyblazer**, **Ash'adar, Harbinger of Dawn**,
+  the **Seabraid Stallion**, the **Gilded Ravasaur**, the **Illidari Felstalker** and the
+  **Armored Siege Kodo**.
 - The Great Panda mounts are now the **Meeksi**: Rollingpaw, Rufflefur, Softpaw, Teatuft and
   Brewthief. In the shop they unlock with the same raids as at Nari Rustpaw.
 
