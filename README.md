@@ -196,16 +196,19 @@ belongs to the account:
   uncommon one, 5 for a rare one, 15 for an epic companion, 25 for an epic mount
   (`BossCoins.Collection.Exchange.*`). Only for items that drop (a creature, a chest, fishing,
   skinning, a pocket, or a container nothing else gives) and that no vendor sells, no quest or
-  quest mail gives, no achievement gives and the shop doesn't sell; anything else would turn gold, or a quest done again on an alt, into
-  coins. When the character doesn't know it yet and can use it, the box also offers to learn
-  it and keep the spare. World table `mod_boss_coins_exchange` sets a price per item, 0 for never; it comes
+  quest mail gives, no spell makes, no achievement gives and the shop doesn't sell; anything
+  else would turn gold, a craft, or a quest done again on an alt, into coins. When the
+  character doesn't know it yet and can use it, the box also offers to learn it and keep the
+  spare. World table `mod_boss_coins_exchange` sets a price per item, 0 for never; it comes
   with the Deathcharger at 25 (rare quality, but a 1% drop).
 
-Bind on equip and bind on use items are left alone, so they can still be sold. Bots are skipped.
+Bind on equip and bind on use items are left alone, so they can still be sold. A bot's pickups
+and achievements count for its account like a player's, so an alt that a bot plays for you still
+collects for you; the right-click box is for players only.
 `BossCoins.Collection.Enable = 0` turns it all off (do that when you remove a sharing module
 and keep its table); `BossCoins.Collection.Achievements = 0` gives the achievement mail back.
-`.reload achievement_reward` brings the mailed items back until the next `.reload config` or
-restart. An account that lost the spell (deleting its last character makes the sharing modules
+After a `.reload achievement_reward` the module strips the reloaded rows again on the next world
+update; an achievement earned during the one map update in between still mails its item. An account that lost the spell (deleting its last character makes the sharing modules
 forget its spells) gets the spell back from the achievement, never an item.
 
 ## Requirements

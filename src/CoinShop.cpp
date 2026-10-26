@@ -83,19 +83,6 @@ namespace
         SERVICE_CHANGE_FACTION = 4,
     };
 
-    // What an item's spell is, for account-wide delivery: a mount (the Mounts skill line) or a
-    // companion (the Companions line), each with the table its sharing module keeps per account.
-    enum AccountKind : uint8
-    {
-        ACCOUNT_NONE   = 0,
-        ACCOUNT_MOUNTS = 1,
-        ACCOUNT_PETS   = 2,
-    };
-
-    // mod-accountwide-mounts and mod-accountwide-pets (and warblups/mod-accountwide before them):
-    // (account_id, spell), read at every login. Looked for at Shop::Load; see accountTables.
-    constexpr char const* ACCOUNT_TABLES[] = { "", "accountwide_mounts", "accountwide_pets" };
-
     struct Offer
     {
         uint32 id = 0;
@@ -253,29 +240,6 @@ namespace
     bool AccountWide(Offer const& offer)
     {
         return shopConfig.accountWideSpells && offer.accountKind != ACCOUNT_NONE && accountTables[offer.accountKind];
-    }
-
-    // A mount is a spell on the Mounts skill line, a companion one on the Companions line: what
-    // puts them on the client's Mounts and Companions tabs, and what the sharing modules go by.
-    uint8 AccountKindOf(uint32 spellId)
-    {
-        SkillLineAbilityMapBounds bounds = sSpellMgr->GetSkillLineAbilityMapBounds(spellId);
-        for (auto itr = bounds.first; itr != bounds.second; ++itr)
-        {
-            if (itr->second->SkillLine == SKILL_MOUNTS)
-                return ACCOUNT_MOUNTS;
-            if (itr->second->SkillLine == SKILL_COMPANIONS)
-                return ACCOUNT_PETS;
-        }
-        return ACCOUNT_NONE;
-    }
-
-    std::string IdList(std::vector<uint32> const& ids)
-    {
-        std::string list;
-        for (uint32 id : ids)
-            list += (list.empty() ? "" : ",") + std::to_string(id);
-        return list;
     }
 
     // The account's characters, with the ones that are logged in (a loading screen counts).
@@ -717,12 +681,7 @@ void BossCoins::Shop::Load()
     // off: .reload config can turn it on without a .coinshop reload.
     for (uint8 kind = ACCOUNT_MOUNTS; kind <= ACCOUNT_PETS; ++kind)
     {
-        // In a LIKE pattern an underscore matches any one character: escaped, so only the table
-        // itself counts.
-        std::string pattern;
-        for (char c : std::string_view(ACCOUNT_TABLES[kind]))
-            pattern += c == '_' ? "\\_" : std::string(1, c);
-        accountTables[kind] = CharacterDatabase.Query("SHOW TABLES LIKE '{}'", pattern) != nullptr;
+        accountTables[kind] = FindAccountTable(kind);
         if (shopConfig.accountWideSpells && !accountTables[kind])
             LOG_INFO("server.loading", "mod-boss-coins: BossCoins.Shop.AccountWideSpells is on but the characters database has no {} table; "
                 "the shop mails {} to the character instead", ACCOUNT_TABLES[kind], kind == ACCOUNT_MOUNTS ? "mounts" : "companions");

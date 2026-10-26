@@ -101,6 +101,35 @@ namespace BossCoins
     }
 
     std::string JsonString(std::string_view text);
+
+    // A mount is a spell on the Mounts skill line, a companion one on the Companions line: what
+    // puts them on the client's Mounts and Companions tabs, and what mod-accountwide-mounts and
+    // mod-accountwide-pets go by. Each sharing module keeps a table per account, (account_id,
+    // spell), read at every login.
+    enum AccountKind : uint8
+    {
+        ACCOUNT_NONE   = 0,
+        ACCOUNT_MOUNTS = 1,
+        ACCOUNT_PETS   = 2,
+    };
+
+    constexpr char const* ACCOUNT_TABLES[] = { "", "accountwide_mounts", "accountwide_pets" };
+
+    uint8 AccountKindOf(uint32 spellId);
+
+    // Whether the characters database has that kind's table. A query, for startup and reloads: a
+    // write to a table that isn't there would abort the core.
+    bool FindAccountTable(uint8 kind);
+
+    // Ids as a list for an IN ().
+    template <typename Ids>
+    std::string IdList(Ids const& ids)
+    {
+        std::string list;
+        for (uint32 id : ids)
+            list += (list.empty() ? "" : ",") + std::to_string(id);
+        return list;
+    }
 }
 
 void AddBossCoinsWalletScripts();
