@@ -172,6 +172,39 @@ answer one line of JSON:
 The caller decides who the account is (a login of its own), so keep SOAP away from players.
 `.coinshop reload` reads the table again.
 
+## Mounts and companions belong to the account
+
+On a server that shares mounts and companions between an account's characters
+([mod-accountwide-mounts](https://github.com/buildthehomelab/wow-mod-accountwide-mounts),
+[mod-accountwide-pets](https://github.com/buildthehomelab/wow-mod-accountwide-pets) or
+mod-accountwide, which keep tables `accountwide_mounts` and `accountwide_pets`), the item that
+teaches one is only a way to the spell. So a **soulbound** one (bind on pickup, or a quest item)
+belongs to the account:
+
+- **Collected on pickup.** When a character gets one the account doesn't have (loot, a roll, a
+  quest reward, a vendor), the item is gone and the spell is the account's. The character learns
+  it at once if it can use the item; the others learn it at their next login. A level 20 alt can
+  loot a level 60 mount for its main.
+- **Right-click** collects one the same way, whatever the item asks of the character: one taken
+  out of the mail, or one from before this.
+- **Achievements give it once per account.** The core's reward mail loses the item; the first
+  character of the account to earn the achievement collects it, later ones get nothing (titles
+  still come). Characters table `mod_boss_coins_collection_achievement` remembers it, and
+  deleting characters doesn't reset it: a fresh alt can't earn the achievement again for a spare.
+- **Spare drops are worth coins.** Right-click a mount or companion the account has already and
+  a box offers to trade it for Tarnished Undermine Reals, into the wallet: 2 for a common or
+  uncommon one, 5 for a rare one, 15 for an epic companion, 25 for an epic mount
+  (`BossCoins.Collection.Exchange.*`). Only for items that drop (a creature, a chest, fishing, a
+  container no vendor sells) and that no vendor sells, no quest gives, no achievement gives and
+  the shop doesn't sell; anything else would turn gold, or a quest done again on an alt, into
+  coins. World table `mod_boss_coins_exchange` sets a price per item, 0 for never; it comes
+  with the Deathcharger at 25 (rare quality, but a 1% drop).
+
+Bind on equip and bind on use items are left alone, so they can still be sold. Bots are skipped.
+`BossCoins.Collection.Enable = 0` turns it all off; `BossCoins.Collection.Achievements = 0` gives
+the achievement mail back. `.reload achievement_reward` brings the mailed items back until the
+next restart.
+
 ## Requirements
 
 - AzerothCore 3.3.5a.
@@ -292,10 +325,13 @@ gives and write the SQL again.
   `mod_boss_coins_source`, `mod_boss_coins_credit` and `mod_boss_coins_shop` (offer ids below
   1000 are the module's: its SQL keeps them up to date but sets `price`, `sort` and `enabled`
   only on a new row, so prices you change stay; add your own offers from 1000).
+  `npc_text` 9503210 and table `mod_boss_coins_exchange` (the Deathcharger's price) for trading
+  spare mounts and companions.
 - Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
   in which each character last got each boss's coins. Table `mod_boss_coins_daily`, the day
   each account last got its daily login coins. Tables `mod_boss_coins_wallet` (balances) and
-  `mod_boss_coins_ledger` (every change).
+  `mod_boss_coins_ledger` (every change). Table `mod_boss_coins_collection_achievement`, the
+  achievement mounts and companions each account has been given.
 - This module's id ranges: item 90410, `ItemExtendedCost` 90411 to 90429, and 9503200 to
   9503299 for everything else. No stock rows are changed.
 
@@ -367,6 +403,14 @@ Category: Dungeons & Raids
   **Armored Siege Kodo**.
 - The Great Panda mounts are now the **Meeksi**: Rollingpaw, Rufflefur, Softpaw, Teatuft and
   Brewthief. In the shop they unlock with the same raids as at Nari Rustpaw.
+- Soulbound **mounts and companions now go straight to your account** the moment you get
+  them: no more mailing reins around or waiting until an alt is high enough to right-click
+  them. Every character learns them, each as soon as it can use them.
+- A mount or companion from an **achievement** is now given **once per account**, to the first
+  character that earns it.
+- Got a **spare** from a drop? Right-click it to trade it for **Tarnished Undermine Reals**:
+  2 to 5 for a companion or mount, 15 for an epic companion and 25 for an epic mount, straight
+  into your wallet.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.

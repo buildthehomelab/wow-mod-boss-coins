@@ -743,6 +743,7 @@ public:
         LoadDailyClaims();
         Wallet::Load();
         Shop::Load();
+        Collection::Load();
         dailySeen = uint64(sWorld->GetNextDailyQuestsResetTime().count());
     }
 
@@ -772,4 +773,5 @@ void AddBossCoinsScripts()
     new BossCoinsWorldScript();
     AddBossCoinsWalletScripts();
     AddBossCoinsShopScripts();
+    AddBossCoinsCollectionScripts();
 }

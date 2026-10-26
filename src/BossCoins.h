@@ -94,10 +94,17 @@ namespace BossCoins
         void Load();
     }
 
+    // Mounts and companions collected for the account, spares traded for coins (Collection.cpp).
+    namespace Collection
+    {
+        void Load();
+    }
+
     std::string JsonString(std::string_view text);
 }
 
 void AddBossCoinsWalletScripts();
 void AddBossCoinsShopScripts();
+void AddBossCoinsCollectionScripts();
 
 #endif
