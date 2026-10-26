@@ -115,12 +115,13 @@ BossCoins.Shop.ProgressionGate = 1
 #    BossCoins.Collection.Enable
 #        Description: On a server that shares mounts and companions between an account's
 #                     characters (the accountwide_mounts / accountwide_pets table of
-#                     mod-accountwide-mounts, mod-accountwide-pets or mod-accountwide): a
+#                     mod-accountwide-mounts / mod-accountwide-pets, with its Enable on): a
 #                     soulbound item that teaches one is collected for the account the moment a
 #                     character gets it, or right-clicks it. The item is gone, the spell is the
 #                     account's, every character learns it at login (one that can use the item
 #                     learns it at once). A spare from a drop can be traded for coins (below).
-#                     Without those tables this does nothing.
+#                     Without those tables this does nothing. Set 0 when you remove a sharing
+#                     module but keep its table.
 #        Default:     1
 #
 

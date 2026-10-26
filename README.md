@@ -175,9 +175,9 @@ The caller decides who the account is (a login of its own), so keep SOAP away fr
 ## Mounts and companions belong to the account
 
 On a server that shares mounts and companions between an account's characters
-([mod-accountwide-mounts](https://github.com/buildthehomelab/wow-mod-accountwide-mounts),
-[mod-accountwide-pets](https://github.com/buildthehomelab/wow-mod-accountwide-pets) or
-mod-accountwide, which keep tables `accountwide_mounts` and `accountwide_pets`), the item that
+([mod-accountwide-mounts](https://github.com/buildthehomelab/wow-mod-accountwide-mounts) and
+[mod-accountwide-pets](https://github.com/buildthehomelab/wow-mod-accountwide-pets), which keep
+tables `accountwide_mounts` and `accountwide_pets`), the item that
 teaches one is only a way to the spell. So a **soulbound** one (bind on pickup, or a quest item)
 belongs to the account:
 
@@ -194,16 +194,19 @@ belongs to the account:
 - **Spare drops are worth coins.** Right-click a mount or companion the account has already and
   a box offers to trade it for Tarnished Undermine Reals, into the wallet: 2 for a common or
   uncommon one, 5 for a rare one, 15 for an epic companion, 25 for an epic mount
-  (`BossCoins.Collection.Exchange.*`). Only for items that drop (a creature, a chest, fishing, a
-  container no vendor sells) and that no vendor sells, no quest gives, no achievement gives and
-  the shop doesn't sell; anything else would turn gold, or a quest done again on an alt, into
-  coins. World table `mod_boss_coins_exchange` sets a price per item, 0 for never; it comes
+  (`BossCoins.Collection.Exchange.*`). Only for items that drop (a creature, a chest, fishing,
+  skinning, a pocket, or a container nothing else gives) and that no vendor sells, no quest or
+  quest mail gives, no achievement gives and the shop doesn't sell; anything else would turn gold, or a quest done again on an alt, into
+  coins. When the character doesn't know it yet and can use it, the box also offers to learn
+  it and keep the spare. World table `mod_boss_coins_exchange` sets a price per item, 0 for never; it comes
   with the Deathcharger at 25 (rare quality, but a 1% drop).
 
 Bind on equip and bind on use items are left alone, so they can still be sold. Bots are skipped.
-`BossCoins.Collection.Enable = 0` turns it all off; `BossCoins.Collection.Achievements = 0` gives
-the achievement mail back. `.reload achievement_reward` brings the mailed items back until the
-next restart.
+`BossCoins.Collection.Enable = 0` turns it all off (do that when you remove a sharing module
+and keep its table); `BossCoins.Collection.Achievements = 0` gives the achievement mail back.
+`.reload achievement_reward` brings the mailed items back until the next `.reload config` or
+restart. An account that lost the spell (deleting its last character makes the sharing modules
+forget its spells) gets the spell back from the achievement, never an item.
 
 ## Requirements
 

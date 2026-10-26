@@ -2,8 +2,9 @@
  * mod-boss-coins: mounts and companions belong to the account.
  *
  * On a server that shares mounts and companions between an account's characters
- * (mod-accountwide-mounts, mod-accountwide-pets or warblups/mod-accountwide, with their tables
- * accountwide_mounts / accountwide_pets), the item that teaches one is only a way to the spell.
+ * (mod-accountwide-mounts and mod-accountwide-pets: their tables accountwide_mounts /
+ * accountwide_pets, and their Enable settings on), the item that teaches one is only a way to the
+ * spell.
  * So a soulbound one (bind on pickup, or a quest item) is collected for the ACCOUNT:
  *
  *   - The moment a character gets one the account doesn't have (loot, a quest reward, a vendor,
@@ -15,12 +16,16 @@
  *   - A mount or companion that an achievement gives is given once per ACCOUNT. Nothing is
  *     mailed: the first character to earn the achievement collects it, the next ones get nothing
  *     (titles still come). Which accounts had it is kept in mod_boss_coins_collection_achievement,
- *     which deleting characters doesn't touch, so a new alt can't earn it again for a spare.
+ *     which deleting characters doesn't touch, so a new alt can't earn it again for a spare. An
+ *     account that lost the spell (the sharing modules forget an account's spells when its last
+ *     character is deleted) gets the spell back, never an item.
  *   - A spare from a drop is worth coins: right-click one the account has already and a box
- *     offers to trade it for Tarnished Undermine Reals, paid into the account wallet. Only for
- *     items that drop (a creature, a chest, fishing, a container nobody sells) and that no vendor
- *     sells, no quest gives, no achievement gives and the launcher's shop doesn't sell: anything
- *     else would turn gold, or a quest done again on an alt, into coins. How many: by quality
+ *     offers to trade it for Tarnished Undermine Reals, paid into the account wallet (or, when
+ *     this character doesn't know it yet and can use it, to learn it and keep the spare). Only
+ *     for items that drop (a creature, a chest, fishing, skinning, a pocket, or a container that
+ *     drops itself or that nothing else gives) and that no vendor sells, no quest, mail or
+ *     achievement gives and the launcher's shop doesn't sell: anything else would turn gold, or
+ *     a quest done again on an alt, into coins. How many: by quality
  *     (BossCoins.Collection.Exchange.*), or world table mod_boss_coins_exchange per item.
  *
  * Bind on equip and bind on use items are left alone: they can still be sold. Bots are skipped.
@@ -35,6 +40,7 @@
 #include "DBCStores.h"
 #include "DataMap.h"
 #include "DatabaseEnv.h"
+#include "GameTime.h"
 #include "GossipDef.h"
 #include "Item.h"
 #include "Log.h"
@@ -67,6 +73,7 @@ namespace
     };
 
     constexpr char const* KIND_TABLES[] = { "", "accountwide_mounts", "accountwide_pets" };
+    constexpr char const* KIND_ENABLE_OPTIONS[] = { "", "AccountWideMounts.Enable", "AccountWidePets.Enable" };
 
     // Item spells that teach the spell in the item's second spell slot. Mount and companion items
     // use one of these two.
@@ -76,6 +83,16 @@ namespace
     // The trade-a-spare box: its gossip menu id, which is also its npc_text (the module's world
     // SQL), from Pix Xizzix's range.
     constexpr uint32 MENU_EXCHANGE = 9503210;
+    // On the box's option sender, with the item entry: learn it on this character, don't trade.
+    constexpr uint32 SENDER_LEARN = 0x80000000;
+
+    // Right-clicks of these items closer together than this are dropped: each can cost two
+    // queries.
+    constexpr uint64 USE_INTERVAL_MS = 1000;
+
+    // How long a spell given to an account counts as given without the database: its write is
+    // asynchronous.
+    constexpr uint64 RECENT_GRANT_MS = 60 * 1000;
 
     struct CollectionConfig
     {
@@ -91,6 +108,8 @@ namespace
 
     // Set at startup, read-only after.
     bool kindTables[3] = { false, false, false };
+    // The sharing modules' Enable settings (config load, world thread).
+    bool kindEnabled[3] = { false, false, false };
     std::unordered_set<uint32> dropItems;                  // items a spare of may be traded
     std::unordered_map<uint32, uint32> exchangeOverrides;  // mod_boss_coins_exchange: item -> coins
 
@@ -102,6 +121,7 @@ namespace
     {
         uint32 itemId = 0;
         uint32 sender = 0;
+        uint8 kind = KIND_NONE;
     };
     std::unordered_map<uint32, OriginalReward> originalRewards;
 
@@ -109,6 +129,18 @@ namespace
     // complete on the map threads.
     std::mutex achievementsLock;
     std::unordered_set<uint64> achievementsGiven;
+
+    // (account << 32 | spell) given in the last RECENT_GRANT_MS -> when: a second copy right
+    // after the first is a spare, even before the first one's write is in the database.
+    std::mutex recentGrantsLock;
+    std::unordered_map<uint64, uint64> recentGrants;
+
+    struct LastUse : DataMap::Base
+    {
+        uint64 ms = 0;
+    };
+
+    constexpr char const* LAST_USE_KEY = "BossCoinsCollectionUse";
 
     // Items a character got that wait for its next update to be collected: StoreNewItem's callers
     // still use the item after the hook, so it can't be destroyed there.
@@ -142,7 +174,7 @@ namespace
 
     // The spell an item teaches and what it is, when it teaches a mount or companion that the
     // server shares between characters.
-    bool Teaches(ItemTemplate const* proto, uint32& spell, uint8& kind)
+    bool Teaches(ItemTemplate const* proto, uint32& spell, uint8& kind, bool evenIfOff = false)
     {
         if (!proto || (proto->Spells[0].SpellId != SPELL_LEARNING && proto->Spells[0].SpellId != SPELL_LEARNING_COMPANION))
             return false;
@@ -152,7 +184,7 @@ namespace
 
         spell = uint32(proto->Spells[1].SpellId);
         kind = KindOf(spell);
-        return kind != KIND_NONE && kindTables[kind];
+        return kind != KIND_NONE && kindTables[kind] && (kindEnabled[kind] || evenIfOff);
     }
 
     // One the module collects for the account: soulbound, so it can't be sold or traded anyway.
@@ -173,11 +205,12 @@ namespace
         if (!sObjectMgr->GetItemTemplate(ITEM_TARNISHED_UNDERMINE_REAL))
             return 0;
 
-        if (auto itr = exchangeOverrides.find(proto->ItemId); itr != exchangeOverrides.end())
-            return itr->second;
-
+        // A row only prices what drops: on any other item it would turn gold or quests into coins.
         if (!dropItems.count(proto->ItemId))
             return 0;
+
+        if (auto itr = exchangeOverrides.find(proto->ItemId); itr != exchangeOverrides.end())
+            return itr->second;
 
         if (proto->Quality >= ITEM_QUALITY_EPIC)
             return kind == KIND_MOUNTS ? collectionConfig.coinsEpicMount : collectionConfig.coinsEpicCompanion;
@@ -195,6 +228,15 @@ namespace
             return true;
 
         uint32 account = player->GetSession()->GetAccountId();
+        {
+            std::lock_guard<std::mutex> guard(recentGrantsLock);
+            uint64 now = GameTime::GetGameTimeMS().count();
+            for (auto itr = recentGrants.begin(); itr != recentGrants.end();)
+                itr = now - itr->second > RECENT_GRANT_MS ? recentGrants.erase(itr) : std::next(itr);
+            if (recentGrants.count(Key(account, spell)))
+                return true;
+        }
+
         if (CharacterDatabase.Query("SELECT 1 FROM `{}` WHERE `account_id` = {} AND `spell` = {} LIMIT 1",
             KIND_TABLES[kind], account, spell))
             return true;
@@ -221,6 +263,10 @@ namespace
             player->SaveInventoryAndGoldToDB(trans);
         }
         CharacterDatabase.CommitTransaction(trans);
+        {
+            std::lock_guard<std::mutex> guard(recentGrantsLock);
+            recentGrants[Key(account, spell)] = GameTime::GetGameTimeMS().count();
+        }
 
         ChatHandler chat(player->GetSession());
         if (!player->HasSpell(spell) && player->CanUseItem(proto) == EQUIP_ERR_OK)
@@ -230,7 +276,7 @@ namespace
                 Bracketed(proto));
         }
         else
-            chat.PSendSysMessage("{} is in your account's collection now: your characters learn it when they log in, each once it can use it.",
+            chat.PSendSysMessage("{} is in your account's collection now: your characters learn it when they log in.",
                 Bracketed(proto));
 
         LOG_INFO("module", "mod-boss-coins: {} ({}) collected {} ({}) for account {}{}", player->GetName(),
@@ -247,6 +293,10 @@ namespace
             fmt::format("Trade your spare {} for {} {}? The coins go to your account wallet. Your account keeps the {} itself.",
                 proto->Name1, coins, CoinName(coins), kind == KIND_MOUNTS ? "mount" : "companion"),
             0, false);
+        uint32 spell = uint32(proto->Spells[1].SpellId);
+        if (!player->HasSpell(spell) && player->CanUseItem(proto) == EQUIP_ERR_OK)
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Learn it on this character and keep the spare.",
+                SENDER_LEARN | proto->ItemId, item->GetGUID().GetCounter());
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Keep it.", 0, 0);
         SendGossipMenuFor(player, MENU_EXCHANGE, player->GetGUID());
     }
@@ -334,9 +384,10 @@ namespace
         std::unordered_set<uint32> candidates;
         for (auto const& [entry, proto] : *sObjectMgr->GetItemTemplateStore())
         {
+            // Settings can change at .reload config; the list can't: made as if everything were on.
             uint32 spell = 0;
             uint8 kind = KIND_NONE;
-            if (Collectable(&proto, spell, kind))
+            if ((proto.Bonding == BIND_WHEN_PICKED_UP || proto.Bonding == BIND_QUEST_ITEM) && Teaches(&proto, spell, kind, true))
                 candidates.insert(entry);
         }
 
@@ -354,27 +405,60 @@ namespace
             }
         };
 
+        // What can be had another way than a drop: what vendors sell, the shop sells, quests and
+        // their mail give, and achievements give (the table, not the core's copy: the module takes
+        // the items out of that, see StripAchievementRewards).
+        auto obtainable = [&](std::unordered_set<uint32> const& items)
+        {
+            std::unordered_set<uint32> found;
+            if (items.empty())
+                return found;
+
+            std::string list = IdList(items);
+            collect(fmt::format("SELECT DISTINCT item FROM npc_vendor WHERE item IN ({})", list), found);
+            collect(fmt::format("SELECT DISTINCT item FROM game_event_npc_vendor WHERE item IN ({})", list), found);
+            collect(fmt::format("SELECT DISTINCT item FROM mod_boss_coins_shop WHERE item IN ({})", list), found);
+            for (char const* column : { "RewardItem1", "RewardItem2", "RewardItem3", "RewardItem4", "RewardChoiceItemID1",
+                "RewardChoiceItemID2", "RewardChoiceItemID3", "RewardChoiceItemID4", "RewardChoiceItemID5", "RewardChoiceItemID6" })
+                collect(fmt::format("SELECT DISTINCT {0} FROM quest_template WHERE {0} IN ({1})", column, list), found);
+            collect(fmt::format("SELECT DISTINCT Item FROM mail_loot_template WHERE Item IN ({})", list), found);
+            collect(fmt::format("SELECT DISTINCT ItemID FROM achievement_reward WHERE ItemID IN ({})", list), found);
+            return found;
+        };
+
+        // The loot a kill, a chest, fishing, skinning or a pocket gives, and every reference
+        // table that loot reaches (references can nest).
+        constexpr char const* SOURCES[] = { "creature_loot_template", "gameobject_loot_template", "fishing_loot_template",
+            "skinning_loot_template", "pickpocketing_loot_template" };
+        std::unordered_set<uint32> references;
+        for (char const* table : SOURCES)
+            collect(fmt::format("SELECT DISTINCT Reference FROM {} WHERE Reference > 0", table), references);
+        for (size_t known = 0; !references.empty() && known != references.size();)
+        {
+            known = references.size();
+            collect(fmt::format("SELECT DISTINCT Reference FROM reference_loot_template WHERE Reference > 0 AND Entry IN ({})",
+                IdList(references)), references);
+        }
+
         std::unordered_set<uint32> drops;
-        for (char const* table : { "creature_loot_template", "gameobject_loot_template", "fishing_loot_template",
-            "skinning_loot_template", "pickpocketing_loot_template", "reference_loot_template" })
+        for (char const* table : SOURCES)
             collect(fmt::format("SELECT DISTINCT Item FROM {} WHERE Reference = 0 AND Item IN ({})", table, ids), drops);
+        if (!references.empty())
+            collect(fmt::format("SELECT DISTINCT Item FROM reference_loot_template WHERE Reference = 0 AND Item IN ({}) AND Entry IN ({})",
+                ids, IdList(references)), drops);
 
-        // A container counts when no vendor sells it (a holiday boss's satchel does, a box bought
-        // for gold doesn't).
-        collect(fmt::format("SELECT DISTINCT l.Item FROM item_loot_template l WHERE l.Reference = 0 AND l.Item IN ({}) "
-            "AND l.Entry NOT IN (SELECT item FROM npc_vendor) AND l.Entry NOT IN (SELECT item FROM game_event_npc_vendor)", ids), drops);
+        // A container counts unless it can be had another way itself (a box bought for gold or
+        // coins, a quest's satchel).
+        std::unordered_set<uint32> containers;
+        collect(fmt::format("SELECT DISTINCT Entry FROM item_loot_template WHERE Reference = 0 AND Item IN ({})", ids), containers);
+        std::unordered_set<uint32> boughtContainers = obtainable(containers);
+        for (uint32 container : boughtContainers)
+            containers.erase(container);
+        if (!containers.empty())
+            collect(fmt::format("SELECT DISTINCT Item FROM item_loot_template WHERE Reference = 0 AND Item IN ({}) AND Entry IN ({})",
+                ids, IdList(containers)), drops);
 
-        std::unordered_set<uint32> other;
-        collect(fmt::format("SELECT DISTINCT item FROM npc_vendor WHERE item IN ({})", ids), other);
-        collect(fmt::format("SELECT DISTINCT item FROM game_event_npc_vendor WHERE item IN ({})", ids), other);
-        collect(fmt::format("SELECT DISTINCT item FROM mod_boss_coins_shop WHERE item IN ({})", ids), other);
-        for (char const* column : { "RewardItem1", "RewardItem2", "RewardItem3", "RewardItem4", "RewardChoiceItemID1",
-            "RewardChoiceItemID2", "RewardChoiceItemID3", "RewardChoiceItemID4", "RewardChoiceItemID5", "RewardChoiceItemID6" })
-            collect(fmt::format("SELECT DISTINCT {0} FROM quest_template WHERE {0} IN ({1})", column, ids), other);
-        // The table, not the core's copy: the module takes the items out of that (see
-        // StripAchievementRewards).
-        collect(fmt::format("SELECT DISTINCT ItemID FROM achievement_reward WHERE ItemID IN ({})", ids), other);
-
+        std::unordered_set<uint32> other = obtainable(drops);
         for (uint32 item : drops)
             if (!other.count(item))
                 dropItems.insert(item);
@@ -400,6 +484,8 @@ namespace
     void StripAchievementRewards()
     {
         bool strip = collectionConfig.enabled && collectionConfig.achievements;
+        uint32 spell = 0;
+        uint8 kind = KIND_NONE;
         for (uint32 id = 0; id < sAchievementStore.GetNumRows(); ++id)
         {
             AchievementEntry const* achievement = sAchievementStore.LookupEntry(id);
@@ -413,17 +499,16 @@ namespace
             auto original = originalRewards.find(id);
             if (original == originalRewards.end())
             {
-                uint32 spell = 0;
-                uint8 kind = KIND_NONE;
-                if (!reward->itemId || !Teaches(sObjectMgr->GetItemTemplate(reward->itemId), spell, kind))
+                if (!reward->itemId || !Teaches(sObjectMgr->GetItemTemplate(reward->itemId), spell, kind, true))
                     continue;
 
-                original = originalRewards.emplace(id, OriginalReward{ reward->itemId, reward->sender }).first;
+                original = originalRewards.emplace(id, OriginalReward{ reward->itemId, reward->sender, kind }).first;
                 achievementItems[id] = reward->itemId;
             }
 
-            reward->itemId = strip ? 0 : original->second.itemId;
-            reward->sender = strip ? 0 : original->second.sender;
+            bool stripThis = strip && kindEnabled[original->second.kind];
+            reward->itemId = stripThis ? 0 : original->second.itemId;
+            reward->sender = stripThis ? 0 : original->second.sender;
         }
     }
 
@@ -485,6 +570,10 @@ public:
         collectionConfig.coinsRare = sConfigMgr->GetOption<uint32>("BossCoins.Collection.Exchange.Rare", 5);
         collectionConfig.coinsEpicCompanion = sConfigMgr->GetOption<uint32>("BossCoins.Collection.Exchange.EpicCompanion", 15);
         collectionConfig.coinsEpicMount = sConfigMgr->GetOption<uint32>("BossCoins.Collection.Exchange.EpicMount", 25);
+        // The sharing modules' own settings, with their default. A table left behind by a removed
+        // module can't be told from a live one: turn BossCoins.Collection.Enable off with it.
+        for (uint8 kind = KIND_MOUNTS; kind <= KIND_PETS; ++kind)
+            kindEnabled[kind] = sConfigMgr->GetOption<bool>(KIND_ENABLE_OPTIONS[kind], true, false);
 
         // At startup the achievement rewards aren't loaded yet: Collection::Load does it then.
         if (reload)
@@ -503,7 +592,8 @@ public:
     {
         uint32 spell = 0;
         uint8 kind = KIND_NONE;
-        if (!item || !Collectable(item->GetTemplate(), spell, kind) || !IsRealPlayer(player))
+        // Not in the world: a character being created, whose Player never logs out.
+        if (!item || !player->IsInWorld() || !Collectable(item->GetTemplate(), spell, kind) || !IsRealPlayer(player))
             return;
 
         PendingItems* pending = player->CustomData.GetDefault<PendingItems>(PENDING_KEY);
@@ -550,10 +640,23 @@ public:
             return;
 
         Item* item = player->GetItemByGuid(ObjectGuid::Create<HighGuid::Item>(action));
-        if (!item || item->GetEntry() != sender || player->IsBankPos(item->GetPos()) || item->IsInTrade())
+        if (!item || item->GetEntry() != (sender & ~SENDER_LEARN) || player->IsBankPos(item->GetPos()) || item->IsInTrade())
             return;
 
-        Exchange(player, item);
+        if (!(sender & SENDER_LEARN))
+        {
+            Exchange(player, item);
+            return;
+        }
+
+        ItemTemplate const* proto = item->GetTemplate();
+        uint32 spell = 0;
+        uint8 kind = KIND_NONE;
+        if (Collectable(proto, spell, kind) && !player->HasSpell(spell) && player->CanUseItem(proto) == EQUIP_ERR_OK)
+        {
+            player->learnSpell(spell);
+            ChatHandler(player->GetSession()).PSendSysMessage("You learn {}. The spare is still yours to trade.", Bracketed(proto));
+        }
     }
 
     // Once per account: the core's mail has no item for these (StripAchievementRewards).
@@ -573,24 +676,26 @@ public:
             return;
 
         uint32 account = player->GetSession()->GetAccountId();
+        bool first;
         {
             std::lock_guard<std::mutex> guard(achievementsLock);
-            if (!achievementsGiven.insert(Key(account, achievement->ID)).second)
-            {
-                ChatHandler(player->GetSession()).PSendSysMessage("Your account got {} for this achievement already.", Bracketed(proto));
-                return;
-            }
+            first = achievementsGiven.insert(Key(account, achievement->ID)).second;
         }
 
-        CharacterDatabase.Execute("INSERT IGNORE INTO mod_boss_coins_collection_achievement (account, achievement, item, guid) "
-            "VALUES ({}, {}, {}, {})", account, achievement->ID, proto->ItemId, player->GetGUID().GetCounter());
+        if (first)
+            CharacterDatabase.Execute("INSERT IGNORE INTO mod_boss_coins_collection_achievement (account, achievement, item, guid) "
+                "VALUES ({}, {}, {}, {})", account, achievement->ID, proto->ItemId, player->GetGUID().GetCounter());
 
         if (AccountHas(player, spell, kind))
         {
-            ChatHandler(player->GetSession()).PSendSysMessage("Your account has {} already.", Bracketed(proto));
+            ChatHandler(player->GetSession()).PSendSysMessage(first ? "Your account has {} already." :
+                "Your account got {} for this achievement already.", Bracketed(proto));
             return;
         }
 
+        // Only ever the spell, never an item: an account that lost it (its last character was
+        // deleted, and the sharing module forgot its spells) gets it back, and nothing is gained
+        // by earning the achievement again.
         GiveAccount(player, proto, spell, kind, nullptr);
     }
 };
@@ -622,6 +727,15 @@ public:
         uint8 kind = KIND_NONE;
         if (!Collectable(proto, spell, kind))
             return true;
+
+        LastUse* lastUse = player->CustomData.GetDefault<LastUse>(LAST_USE_KEY);
+        uint64 now = GameTime::GetGameTimeMS().count();
+        if (now - lastUse->ms < USE_INTERVAL_MS)
+        {
+            player->SendEquipError(EQUIP_ERR_NONE, item, nullptr);
+            return false;
+        }
+        lastUse->ms = now;
 
         if (!AccountHas(player, spell, kind))
         {
