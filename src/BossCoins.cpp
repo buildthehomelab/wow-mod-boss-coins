@@ -55,6 +55,7 @@
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellInfo.h"
+#include "SpellMgr.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -71,6 +72,29 @@ bool BossCoins::IsRealPlayer(Player* player)
 {
     WorldSession* session = player ? player->GetSession() : nullptr;
     return session && !IsBotSession(session);
+}
+
+uint8 BossCoins::AccountKindOf(uint32 spellId)
+{
+    SkillLineAbilityMapBounds bounds = sSpellMgr->GetSkillLineAbilityMapBounds(spellId);
+    for (auto itr = bounds.first; itr != bounds.second; ++itr)
+    {
+        if (itr->second->SkillLine == SKILL_MOUNTS)
+            return ACCOUNT_MOUNTS;
+        if (itr->second->SkillLine == SKILL_COMPANIONS)
+            return ACCOUNT_PETS;
+    }
+    return ACCOUNT_NONE;
+}
+
+bool BossCoins::FindAccountTable(uint8 kind)
+{
+    // In a LIKE pattern an underscore matches any one character: escaped, so only the table
+    // itself counts.
+    std::string pattern;
+    for (char c : std::string_view(ACCOUNT_TABLES[kind]))
+        pattern += c == '_' ? "\\_" : std::string(1, c);
+    return CharacterDatabase.Query("SHOW TABLES LIKE '{}'", pattern) != nullptr;
 }
 
 char const* BossCoins::CoinName(uint32 count)
@@ -753,6 +777,7 @@ public:
         LoadDailyClaims();
         Wallet::Load();
         Shop::Load();
+        Collection::Load();
         dailySeen = uint64(sWorld->GetNextDailyQuestsResetTime().count());
     }
 
@@ -782,4 +807,5 @@ void AddBossCoinsScripts()
     new BossCoinsWorldScript();
     AddBossCoinsWalletScripts();
     AddBossCoinsShopScripts();
+    AddBossCoinsCollectionScripts();
 }

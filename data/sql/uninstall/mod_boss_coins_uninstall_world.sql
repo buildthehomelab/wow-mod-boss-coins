@@ -3,7 +3,7 @@
 -- db-world and db-characters folders.
 --
 -- Removes Pix Xizzix with her spawn, greeting, pages and stock, the prices, the coin, the
--- two tables of coin sources and the launcher shop's offers (your own changes to them included). Coins that players already own stay
+-- two tables of coin sources, the launcher shop's offers, the spare-trade prices (your own changes to them included). Coins that players already own stay
 -- in their bags as items the server no longer knows: see the characters uninstall file. It also
 -- forgets that the module's updates were applied, so installing the module again applies them
 -- again. Idempotent: safe to run again.
@@ -14,7 +14,7 @@ DELETE FROM `npc_vendor` WHERE `entry` BETWEEN 9503200 AND 9503299;
 
 DELETE FROM `gossip_menu_option` WHERE `MenuID` = 9503200;
 DELETE FROM `gossip_menu` WHERE `MenuID` = 9503200;
-DELETE FROM `npc_text` WHERE `ID` = 9503200;
+DELETE FROM `npc_text` WHERE `ID` IN (9503200, 9503210);
 
 DELETE FROM `creature` WHERE `guid` = 9503200;
 DELETE FROM `creature_template_model` WHERE `CreatureID` BETWEEN 9503200 AND 9503299;
@@ -26,5 +26,6 @@ DELETE FROM `item_template` WHERE `entry` = 90410;
 DROP TABLE IF EXISTS `mod_boss_coins_source`;
 DROP TABLE IF EXISTS `mod_boss_coins_credit`;
 DROP TABLE IF EXISTS `mod_boss_coins_shop`;
+DROP TABLE IF EXISTS `mod_boss_coins_exchange`;
 
 DELETE FROM `updates` WHERE `name` LIKE 'mod\_boss\_coins\_%';

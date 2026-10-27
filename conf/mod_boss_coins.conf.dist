@@ -110,3 +110,47 @@ BossCoins.Shop.AccountWideSpells = 0
 #
 
 BossCoins.Shop.ProgressionGate = 1
+
+#
+#    BossCoins.Collection.Enable
+#        Description: On a server that shares mounts and companions between an account's
+#                     characters (the accountwide_mounts / accountwide_pets table of
+#                     mod-accountwide-mounts / mod-accountwide-pets, with its Enable on): a
+#                     soulbound item that teaches one is collected for the account the moment a
+#                     character gets it, or right-clicks it. The item is gone, the spell is the
+#                     account's, every character learns it at login (one that can use the item
+#                     learns it at once). A spare from a drop can be traded for coins (below).
+#                     Without those tables this does nothing. Set 0 when you remove a sharing
+#                     module but keep its table.
+#        Default:     1
+#
+
+BossCoins.Collection.Enable = 1
+
+#
+#    BossCoins.Collection.Achievements
+#        Description: 1: a mount or companion that an achievement gives is given once per
+#                     account, without a mail. Deleting characters doesn't reset it. 0: the
+#                     core mails it to every character that earns the achievement.
+#        Default:     1
+#
+
+BossCoins.Collection.Achievements = 1
+
+#
+#    BossCoins.Collection.Exchange.Common
+#    BossCoins.Collection.Exchange.Rare
+#    BossCoins.Collection.Exchange.EpicCompanion
+#    BossCoins.Collection.Exchange.EpicMount
+#        Description: Coins for trading a spare: a soulbound mount or companion the account has
+#                     already, from a drop that no vendor, quest, achievement or the shop gives.
+#                     By the item's quality: common or uncommon, rare, epic. 0 turns it off for
+#                     that quality. World table mod_boss_coins_exchange sets a price per item
+#                     (0: not tradeable), and wins over these.
+#        Default:     2, 5, 15, 25
+#
+
+BossCoins.Collection.Exchange.Common = 2
+BossCoins.Collection.Exchange.Rare = 5
+BossCoins.Collection.Exchange.EpicCompanion = 15
+BossCoins.Collection.Exchange.EpicMount = 25

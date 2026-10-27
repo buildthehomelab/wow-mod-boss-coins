@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS `mod_boss_coins_award`;
 DROP TABLE IF EXISTS `mod_boss_coins_daily`;
 DROP TABLE IF EXISTS `mod_boss_coins_wallet`;
 DROP TABLE IF EXISTS `mod_boss_coins_ledger`;
+DROP TABLE IF EXISTS `mod_boss_coins_collection_achievement`;
 
 DELETE ci FROM `character_inventory` ci JOIN `item_instance` ii ON ii.`guid` = ci.`item` WHERE ii.`itemEntry` = 90410;
 DELETE mi FROM `mail_items` mi JOIN `item_instance` ii ON ii.`guid` = mi.`item_guid` WHERE ii.`itemEntry` = 90410;
