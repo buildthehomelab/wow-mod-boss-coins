@@ -245,6 +245,11 @@ namespace
     {
         ChatHandler chat(player->GetSession());
         uint32 account = player->GetSession()->GetAccountId();
+        if (IsSelfFound(player->GetGUID().GetCounter()))
+        {
+            chat.SendSysMessage("Self-Found characters keep their coins: the account wallet is shared.");
+            return;
+        }
 
         uint32 before = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
         if (!before)
@@ -288,6 +293,12 @@ namespace
     void Withdraw(Player* player, uint32 wanted)
     {
         ChatHandler chat(player->GetSession());
+        if (IsSelfFound(player->GetGUID().GetCounter()))
+        {
+            chat.SendSysMessage("Self-Found characters can't take coins out of the account wallet.");
+            return;
+        }
+
         uint32 account = player->GetSession()->GetAccountId();
         uint32 balance = Wallet::Balance(account);
 
@@ -339,6 +350,10 @@ public:
 
         uint32 balance = Wallet::Balance(player->GetSession()->GetAccountId());
         uint32 carried = player->GetItemCount(ITEM_TARNISHED_UNDERMINE_REAL, true);
+
+        // A Self-Found character neither puts coins into the shared wallet nor takes them out.
+        if (IsSelfFound(player->GetGUID().GetCounter()))
+            balance = carried = 0;
 
         if (carried)
             AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, fmt::format("Put the {} {} I carry in my account wallet.",
