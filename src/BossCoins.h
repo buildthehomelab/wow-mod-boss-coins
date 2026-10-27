@@ -15,6 +15,10 @@
 #include <type_traits>
 #include <utility>
 
+#if __has_include("ChallengesApi.h")
+#include "ChallengesApi.h"
+#endif
+
 class Player;
 
 namespace BossCoins
@@ -57,6 +61,11 @@ namespace BossCoins
     // mail.
     uint32 CoinRoom(Player* player);
 
+    // Coins into the player's bags, up to the coin's cap, and by mail what the bags can't hold.
+    // On the thread that runs the player's packets, with the player in the world. For coins a
+    // character earns itself while the account wallet is not for it (a Self-Found challenge).
+    void GiveCoinsToBags(Player* player, uint32 count);
+
     // The account wallet (CoinWallet.cpp): coins that belong to an account rather than to a
     // character's bags, spent in the launcher's shop. Any thread may change a balance (boss kills
     // pay on the map threads): each change is checked and made under one lock.
@@ -95,6 +104,18 @@ namespace BossCoins
     }
 
     std::string JsonString(std::string_view text);
+
+    // mod-challenges: a Self-Found character spends only the coins it carries itself; the account
+    // wallet and the shop's items stay out of its reach.
+    inline bool IsSelfFound(uint32 guid)
+    {
+#if __has_include("ChallengesApi.h")
+        return Challenges::IsSelfFound(guid);
+#else
+        (void)guid;
+        return false;
+#endif
+    }
 }
 
 void AddBossCoinsWalletScripts();

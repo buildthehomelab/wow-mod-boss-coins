@@ -786,7 +786,7 @@ public:
             {
                 if (owned.count(Key(o.id, c.guid)))
                     have.push_back(c.guid);
-                if (!CannotUse(o, c).empty())
+                if (!CannotUse(o, c).empty() || (!o.service && IsSelfFound(c.guid)))
                     cannot.push_back(c.guid);
             }
 
@@ -829,6 +829,8 @@ public:
 
         LoadSkills(characters, { offer });
         Character const& character = *itr;
+        if (!offer->service && IsSelfFound(character.guid))
+            return Refuse(handler, "cannot", fmt::format("{} is Self-Found and can't take items from the shop.", character.name));
         if (std::string why = CannotUse(*offer, character); !why.empty())
             return Refuse(handler, "cannot", why);
 
