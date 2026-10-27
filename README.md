@@ -192,7 +192,8 @@ belongs to the account:
   still come). Characters table `mod_boss_coins_collection_achievement` remembers it, and
   deleting characters doesn't reset it: a fresh alt can't earn the achievement again for a spare.
 - **Spare drops are worth coins.** Right-click a mount or companion the account has already and
-  a box offers to trade it for Tarnished Undermine Reals, into the wallet: 2 for a common or
+  a box offers to trade it for Tarnished Undermine Reals, into the wallet (a Self-Found
+  character's into its bags): 2 for a common or
   uncommon one, 5 for a rare one, 15 for an epic companion, 25 for an epic mount
   (`BossCoins.Collection.Exchange.*`). Only for items that drop (a creature, a chest, fishing,
   skinning, a pocket, or a container nothing else gives) and that no vendor sells, no quest or

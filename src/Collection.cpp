@@ -280,8 +280,9 @@ namespace
         player->PlayerTalkClass->GetGossipMenu().SetMenuId(MENU_EXCHANGE);
         AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, fmt::format("Trade this spare {} for {} {}.", proto->Name1, coins, CoinName(coins)),
             proto->ItemId, item->GetGUID().GetCounter(),
-            fmt::format("Trade your spare {} for {} {}? The coins go to your account wallet. Your account keeps the {} itself.",
-                proto->Name1, coins, CoinName(coins), kind == ACCOUNT_MOUNTS ? "mount" : "companion"),
+            fmt::format("Trade your spare {} for {} {}? The coins go {}. Your account keeps the {} itself.",
+                proto->Name1, coins, CoinName(coins), IsSelfFound(player->GetGUID().GetCounter()) ? "in your bags" : "to your account wallet",
+                kind == ACCOUNT_MOUNTS ? "mount" : "companion"),
             0, false);
         uint32 spell = uint32(proto->Spells[1].SpellId);
         if (!player->HasSpell(spell) && player->CanUseItem(proto) == EQUIP_ERR_OK)
@@ -313,6 +314,21 @@ namespace
         ChatHandler chat(player->GetSession());
         uint32 account = player->GetSession()->GetAccountId();
         uint32 guid = player->GetGUID().GetCounter();
+
+        // A Self-Found character (mod-challenges) keeps the coins it earns, in its bags.
+        if (IsSelfFound(guid))
+        {
+            player->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
+            GiveCoinsToBags(player, coins);
+            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+            player->SaveInventoryAndGoldToDB(trans);
+            CharacterDatabase.CommitTransaction(trans);
+
+            chat.PSendSysMessage("You traded your spare {} for {} {}.", Bracketed(proto), coins, CoinName(coins));
+            LOG_INFO("module", "mod-boss-coins: {} ({}, account {}, Self-Found) traded a spare {} ({}) for {} coins", player->GetName(),
+                guid, account, proto->Name1, proto->ItemId, coins);
+            return;
+        }
 
         // Into the wallet and out of the bags in one transaction.
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();

@@ -340,7 +340,8 @@ namespace
                 if (IsRealPlayer(player) && ClaimForPeriod(player, encounterId, periodEnd, instanceId))
                 {
                     uint32 count = itr->second + BonusCoin(player);
-                    if (config.bossToWallet)
+                    // A Self-Found character can't reach the wallet, so it keeps the coins it earns.
+                    if (config.bossToWallet && !IsSelfFound(player->GetGUID().GetCounter()))
                         ChatHandler(player->GetSession()).PSendSysMessage("{} {} into your account wallet (.wallet), which now holds {}.",
                             count, CoinName(count), ToWallet(player, count, "boss"));
                     else
@@ -362,7 +363,8 @@ namespace
 
         uint32 account = player->GetSession()->GetAccountId();
         uint64 dayEnd = uint64(sWorld->GetNextDailyQuestsResetTime().count());
-        bool toWallet = config.dailyToWallet;
+        // The daily coins belong to the account, so a Self-Found character leaves them in the wallet.
+        bool toWallet = config.dailyToWallet || IsSelfFound(player->GetGUID().GetCounter());
 
         {
             std::lock_guard<std::mutex> guard(dailyLock);
@@ -513,6 +515,11 @@ namespace
             } while (result->NextRow());
         }
     }
+}
+
+void BossCoins::GiveCoinsToBags(Player* player, uint32 count)
+{
+    GiveCoins(player, count);
 }
 
 class BossCoinsGlobalScript : public GlobalScript
@@ -714,6 +721,9 @@ public:
         }
         else
             return;
+
+        if (IsSelfFound(player->GetGUID().GetCounter()))
+            return;   // the core's "missing items" says it
 
         ChatHandler chat(player->GetSession());
         uint32 account = player->GetSession()->GetAccountId();
