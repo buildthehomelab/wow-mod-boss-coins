@@ -154,3 +154,7 @@ BossCoins.Collection.Exchange.Common = 2
 BossCoins.Collection.Exchange.Rare = 5
 BossCoins.Collection.Exchange.EpicCompanion = 15
 BossCoins.Collection.Exchange.EpicMount = 25
+
+# Development API for durable delve completion credits. Requires receipt SQL,
+# matching delve caller and coordinated reviewed server pins. Default off.
+BossCoins.DelveAwards.Enable = 0

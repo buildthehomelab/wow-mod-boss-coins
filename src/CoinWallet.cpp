@@ -30,6 +30,7 @@
 #include "Chat.h"
 #include "ChatCommand.h"
 #include "Creature.h"
+#include "Config.h"
 #include "DatabaseEnv.h"
 #include "GameTime.h"
 #include "GossipDef.h"
@@ -60,6 +61,9 @@ namespace
     // Change, so any thread may make one.
     std::mutex walletLock;
     std::unordered_map<uint32, uint32> balances;
+    std::unordered_set<uint32> uncertainAccounts;
+    bool delveAwardsReady = false;
+    std::unordered_map<uint32, std::vector<std::weak_ptr<TransactionBase>>> pendingTransactions;
 
     // Accounts whose balance changed since the world thread last told their client. Changes come
     // from any thread, and the session list belongs to the world thread, so the telling waits for
@@ -84,10 +88,19 @@ namespace
     int64 Change(uint32 account, uint32 guid, int64 change, std::string_view reason, uint32 offer,
         CharacterDatabaseTransaction trans, uint32* balanceAfter = nullptr)
     {
+        bool const own = !trans;
+        if (own)
+            trans = CharacterDatabase.BeginTransaction();
         uint32 balance;
         {
             std::lock_guard<std::mutex> guard(walletLock);
             uint32& coins = balances[account];
+            if (uncertainAccounts.count(account))
+            {
+                if (balanceAfter)
+                    *balanceAfter = coins;
+                return 0;
+            }
             if (change > 0)
                 change = std::min<int64>(change, int64(Wallet::MAX_BALANCE) - coins);
             else if (-change > int64(coins))
@@ -95,6 +108,12 @@ namespace
 
             coins = uint32(int64(coins) + change);
             balance = coins;
+            if (change)
+            {
+                auto& pending = pendingTransactions[account];
+                Wallet::HasPendingWalletTransactions(pending);
+                pending.emplace_back(trans);
+            }
         }
 
         if (balanceAfter)
@@ -106,10 +125,6 @@ namespace
             std::lock_guard<std::mutex> guard(changedLock);
             changedAccounts.insert(account);
         }
-
-        bool own = !trans;
-        if (own)
-            trans = CharacterDatabase.BeginTransaction();
 
         Record(trans, account, guid, change, balance, reason, offer);
 
@@ -136,6 +151,65 @@ bool BossCoins::Wallet::Take(uint32 account, uint32 guid, uint32 coins, std::str
     CharacterDatabaseTransaction trans)
 {
     return !coins || Change(account, guid, -int64(coins), reason, offer, trans);
+}
+
+bool BossCoins::Wallet::DelveAwardsReady()
+{
+    std::lock_guard<std::mutex> guard(walletLock);
+    return delveAwardsReady;
+}
+
+BossCoins::Wallet::AwardStatus BossCoins::Wallet::AwardDelveOnce(Player* player, uint64 runId, uint32 coins)
+{
+    if (!IsRealPlayer(player) || !player->GetSession())
+        return AwardStatus::Rejected;
+    uint64 const guid = player->GetGUID().GetRawValue();
+    if (!guid || guid > std::numeric_limits<uint32>::max() || IsSelfFound(static_cast<uint32>(guid)))
+        return AwardStatus::Rejected;
+    uint32 const account = player->GetSession()->GetAccountId();
+    DelveAward const award{runId, account, static_cast<uint32>(guid), coins};
+    std::lock_guard<std::mutex> guard(walletLock);
+    if (!delveAwardsReady)
+        return AwardStatus::Deferred;
+    if (uncertainAccounts.count(account))
+        return AwardStatus::Uncertain;
+    auto& pending = pendingTransactions[account];
+    if (HasPendingWalletTransactions(pending))
+        return AwardStatus::Deferred;
+    // Legacy writes may have failed despite updating the cache. Do not compound
+    // that divergence or guess how much room is durably available.
+    auto baseline = CharacterDatabase.Query("SELECT COUNT(*), COALESCE(MAX(coins),0) FROM mod_boss_coins_wallet WHERE account={}", account);
+    if (!baseline || baseline->Fetch()[1].Get<int64>() != balances[account])
+        return AwardStatus::Deferred;
+    bool blocked = uncertainAccounts.count(account) != 0;
+    auto read = [](DelveAward const& request)
+    {
+        auto result = CharacterDatabase.Query("SELECT COUNT(*), COALESCE(MAX(run_id),0), COALESCE(MAX(account),0), "
+            "COALESCE(MAX(guid),0), COALESCE(MAX(coins),0) FROM mod_boss_coins_delve_receipt WHERE reward_key = '{}'", request.Key());
+        if (!result)
+            return AwardReceipt{ReceiptState::Unavailable, {}};
+        Field* fields = result->Fetch();
+        if (!fields[0].Get<uint64>())
+            return AwardReceipt{ReceiptState::Missing, {}};
+        return AwardReceipt{ReceiptState::Found, {fields[1].Get<uint64>(), fields[2].Get<uint32>(),
+            fields[3].Get<uint32>(), fields[4].Get<uint32>()}};
+    };
+    auto commit = [](DelveAward const& request, uint32 balance)
+    {
+        CharacterDatabase.DirectExecute(DelveAwardStatement(request, balance, GameTime::GetGameTime().count()));
+    };
+    AwardStatus const status = CreditDelveOnce(award, balances[account], blocked, read, commit);
+    if (blocked)
+    {
+        if (uncertainAccounts.insert(account).second)
+            LOG_ERROR("module.bosscoins", "Uncertain durable delve award {}; wallet account {} blocked until recovery", award.Key(), account);
+    }
+    if (status == AwardStatus::Paid)
+    {
+        std::lock_guard<std::mutex> changedGuard(changedLock);
+        changedAccounts.insert(account);
+    }
+    return status;
 }
 
 uint32 BossCoins::Wallet::ToBags(Player* player, uint32 coins, std::string_view reason, bool all)
@@ -182,6 +256,9 @@ void BossCoins::Wallet::Load()
 {
     std::lock_guard<std::mutex> guard(walletLock);
     balances.clear();
+    uncertainAccounts.clear();
+    pendingTransactions.clear();
+    delveAwardsReady = false;
 
     // A balance below 0 can only be the leftover of a change that failed. The server counts it as
     // 0, so the row has to say 0 too, or every change after it would be off by as much.
@@ -194,6 +271,21 @@ void BossCoins::Wallet::Load()
             Field* fields = result->Fetch();
             balances[fields[0].Get<uint32>()] = uint32(fields[1].Get<int32>());
         } while (result->NextRow());
+    }
+
+    if (sConfigMgr->GetOption<bool>("BossCoins.DelveAwards.Enable", false))
+    {
+        auto engines = CharacterDatabase.Query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() "
+            "AND table_name IN ('mod_boss_coins_wallet','mod_boss_coins_ledger','mod_boss_coins_delve_receipt') AND engine='InnoDB'");
+        auto available = CharacterDatabase.Query("SELECT COUNT(*) FROM mod_boss_coins_wallet WHERE coins > 0");
+        auto routine = CharacterDatabase.Query("SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema=DATABASE() "
+            "AND routine_name='mod_boss_coins_delve_award' AND routine_type='PROCEDURE' AND routine_comment='delve-award-v1'");
+        auto receipts = CharacterDatabase.Query("SELECT COUNT(*) FROM mod_boss_coins_delve_receipt WHERE 1=0");
+        delveAwardsReady = engines && engines->Fetch()[0].Get<uint32>() == 3 && routine &&
+            routine->Fetch()[0].Get<uint32>() == 1 && available && receipts &&
+            available->Fetch()[0].Get<uint64>() == balances.size();
+        if (!delveAwardsReady)
+            LOG_ERROR("module.bosscoins", "Durable delve awards disabled: incomplete wallet load or InnoDB receipt schema");
     }
 
     LOG_INFO("server.loading", "mod-boss-coins: {} account wallet(s) with coins in them", balances.size());
