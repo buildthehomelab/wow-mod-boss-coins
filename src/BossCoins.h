@@ -7,6 +7,7 @@
 #ifndef MOD_BOSS_COINS_H
 #define MOD_BOSS_COINS_H
 
+#include "DurableAward.h"
 #include "DatabaseEnvFwd.h"
 #include "Define.h"
 
@@ -93,6 +94,11 @@ namespace BossCoins
         // thread that runs the player's packets (the world thread or the player's map), with the
         // player in the world. Returns the coins moved.
         uint32 ToBags(Player* player, uint32 coins, std::string_view reason, bool all = false);
+
+        // Trusted delve service only: run identity/completion is checked by caller.
+        // Real, non-Self-Found owners only. No cache credit before durable receipt.
+        AwardStatus AwardDelveOnce(Player* player, uint64 runId, uint32 coins);
+        bool DelveAwardsReady();
 
         void Load();
     }

@@ -1,0 +1,53 @@
+name: Durable delve wallet awards
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  awards:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: delve-ci-only
+          MYSQL_DATABASE: coin_award_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build recovery policy checks with sanitizers
+        run: |
+          cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+      - name: Install database client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends default-mysql-client default-libmysqlclient-dev
+      - name: Verify real receipt and ledger transactions
+        env:
+          MYSQL_PWD: delve-ci-only
+        run: |
+          python3 tests/check_award_sql.py --binary build/durable_award_tests
+          python3 - <<'PYCODE'
+          import shlex, subprocess
+          flags = shlex.split(subprocess.check_output(['mysql_config', '--cflags', '--libs'], text=True))
+          subprocess.run(['c++', '-std=c++17', '-Isrc', 'tests/check_award_c_api.cpp', '-o', 'build/check-award-c-api', *flags], check=True)
+          subprocess.run(['build/check-award-c-api'], check=True)
+          PYCODE
+  core-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: buildthehomelab/wow-azerothcore
+          ref: 9e4a232a84d375a8906717c5139fb8d6bf2e41d6
+          path: .core
+      - name: Install headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libboost-dev libssl-dev
+      - name: Compile module against real pinned core
+        run: python3 tools/check_core_headers.py --core .core
