@@ -26,6 +26,7 @@ DELETE FROM `item_template` WHERE `entry` = 90410;
 DROP TABLE IF EXISTS `mod_boss_coins_source`;
 DROP TABLE IF EXISTS `mod_boss_coins_credit`;
 DROP TABLE IF EXISTS `mod_boss_coins_shop`;
+DROP TABLE IF EXISTS `mod_boss_coins_shop_extra`;
 DROP TABLE IF EXISTS `mod_boss_coins_exchange`;
 
 DELETE FROM `updates` WHERE `name` LIKE 'mod\_boss\_coins\_%';

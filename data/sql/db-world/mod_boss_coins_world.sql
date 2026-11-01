@@ -10,6 +10,7 @@
 --   mod_boss_coins_source  which bosses give coins, and how many.
 --   mod_boss_coins_credit  creatures whose death also counts as one of those bosses.
 --   mod_boss_coins_shop    what the launcher's shop sells for wallet coins.
+--   mod_boss_coins_shop_extra  items that come with a shop offer.
 --
 -- This module's ids: item 90410 and ItemExtendedCost 90411-90429; creature entries, the spawn
 -- guid, gossip menu and npc_text 9503200-9503299. No stock rows are changed. Idempotent.
@@ -1112,12 +1113,12 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (245, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 230, 13, 90638, 1, 0, 244, 1, 'mod-retail-pets: Lana\'thel\'s Crimson Cascade'),
 (246, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 230, 13, 90639, 1, 0, 245, 1, 'mod-retail-pets: Soaring Sky Fox'),
 (247, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 230, 13, 90640, 1, 0, 246, 1, 'mod-retail-pets: Timbered Sky Snake'),
-(248, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90641, 1, 0, 247, 1, 'mod-retail-pets: Archmage\'s Great Raven'),
+(248, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding. Comes with the Archmage\'s feathered cowl, mantle, drape and standard, and a druid Flight Form look.', '', 240, 14, 90641, 1, 0, 247, 1, 'mod-retail-pets: Archmage\'s Great Raven'),
 (249, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90642, 1, 0, 248, 1, 'mod-retail-pets: Chaos-Forged Dreadwing'),
 (250, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90643, 1, 0, 249, 1, 'mod-retail-pets: Chaos-Forged Gryphon'),
 (251, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90644, 1, 0, 250, 1, 'mod-retail-pets: Chaos-Forged Hippogryph'),
 (252, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90645, 1, 0, 251, 1, 'mod-retail-pets: Chaos-Forged Wind Rider'),
-(253, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 240, 14, 90646, 1, 0, 252, 1, 'mod-retail-pets: Prophet\'s Great Raven'),
+(253, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding. Comes with the Prophet\'s feathered cowl, mantle, drape and standard, and a druid Flight Form look.', '', 240, 14, 90646, 1, 0, 252, 1, 'mod-retail-pets: Prophet\'s Great Raven'),
 (254, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 250, 15, 90647, 1, 0, 253, 1, 'mod-retail-pets: Astral Aurochs'),
 (255, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 250, 15, 90648, 1, 0, 254, 1, 'mod-retail-pets: Blossombranch Groveglider'),
 (256, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 250, 15, 90649, 1, 0, 255, 1, 'mod-retail-pets: Cindertuft Groveglider'),
@@ -1151,3 +1152,25 @@ INSERT INTO `mod_boss_coins_shop` (`id`, `category`, `name`, `description`, `ico
 (285, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 220, 12, 90677, 1, 0, 240, 1, 'mod-retail-pets: Sapphire Skyblazer'),
 (286, 'mount', '', 'A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.', '', 220, 12, 90678, 1, 0, 240, 1, 'mod-retail-pets: Ash\'adar, Harbinger of Dawn')
 ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), `icon` = VALUES(`icon`), `phase` = VALUES(`phase`), `item` = VALUES(`item`), `count` = VALUES(`count`), `service` = VALUES(`service`), `comment` = VALUES(`comment`);
+
+-- Items that come with a shop offer, mailed to the character it is bought for in one mail
+-- (at most 12 items an offer), also when the offer's own mount or companion goes to the
+-- whole account. An item that isn't on the server is left out. Offers below 1000 are this
+-- module's, and so are their rows here: add your own for your own offers.
+CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop_extra` (
+  `offer` INT UNSIGNED NOT NULL COMMENT 'mod_boss_coins_shop id',
+  `item` INT UNSIGNED NOT NULL COMMENT 'item_template entry, mailed',
+  `count` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `comment` VARCHAR(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`offer`, `item`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: items that come with a shop offer';
+DELETE FROM `mod_boss_coins_shop_extra` WHERE `offer` < 1000;
+INSERT INTO `mod_boss_coins_shop_extra` (`offer`, `item`, `count`, `comment`) VALUES
+(253, 90690, 1, 'mod-retail-pets: Feathered Cowl of the Prophet'),
+(253, 90691, 1, 'mod-retail-pets: Feathered Mantle of the Prophet'),
+(253, 90692, 1, 'mod-retail-pets: Feathered Drape of the Prophet'),
+(253, 90693, 1, 'mod-retail-pets: Standard of the Prophet'),
+(248, 90694, 1, 'mod-retail-pets: Feathered Cowl of the Archmage'),
+(248, 90695, 1, 'mod-retail-pets: Feathered Mantle of the Archmage'),
+(248, 90696, 1, 'mod-retail-pets: Feathered Drape of the Archmage'),
+(248, 90697, 1, 'mod-retail-pets: Standard of the Archmage');

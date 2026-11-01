@@ -120,7 +120,14 @@ and nothing has to be learned from an item; its spell goes into that module's `a
 / `accountwide_pets` table, every character of the account in the game learns it on the spot and
 the others learn it when they next log in (that module decides what each can use). The listing
 marks such an offer `account`, nobody is `cannot` for it, and the account owns it as soon as one
-character knows it or it is in the table. As shipped:
+character knows it or it is in the table.
+
+**What comes with an offer.** World table `mod_boss_coins_shop_extra` lists items that come with
+an offer, like the looks of a retail shop bundle that come with its mount: they are mailed to the
+character the offer is bought for, in one mail of their own (up to 12 items), also when the mount
+itself goes to the account. The Prophet's and the Archmage's Great Raven bring their Wings &
+Wisdom gear (mod-retail-pets 90690-90697): a feathered cowl, mantle and drape and a standard
+(a staff), to wear or to collect as transmog looks. As shipped:
 
 | Offer | Price |
 | --- | --- |
@@ -132,6 +139,7 @@ character knows it or it is in the table. As shipped:
 | Its five Meeksi red panda mounts | 100 + 10 per progression phase: 110 to 180 |
 | Its Whoofle Bramblewing, an owl mount that flies where flying mounts can | free |
 | Its 78 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 100 + 10 per progression phase: 110 to 280 |
+| ... of which the Prophet's and the Archmage's Great Raven come with their feathered cowl, mantle, drape and standard | 240 each (phase 14) |
 | The core's Celestial Steed (item 54811) | 180 (phase 8) |
 
 **Progression.** An offer can wait for a
@@ -331,7 +339,9 @@ gives and write the SQL again.
   her stock. `conditions` rows on her gossip options and her stock. Tables
   `mod_boss_coins_source`, `mod_boss_coins_credit` and `mod_boss_coins_shop` (offer ids below
   1000 are the module's: its SQL keeps them up to date but sets `price`, `sort` and `enabled`
-  only on a new row, so prices you change stay; add your own offers from 1000).
+  only on a new row, so prices you change stay; add your own offers from 1000), and
+  `mod_boss_coins_shop_extra`, the items that come with an offer (the module's rows are those
+  of its own offers, below 1000).
   `npc_text` 9503210 and table `mod_boss_coins_exchange` (the Deathcharger's price) for trading
   spare mounts and companions.
 - Characters: table `mod_boss_coins_award`, the lockout or day, and for a raid the instance,
@@ -418,6 +428,9 @@ Category: Dungeons & Raids
 - Got a **spare** from a drop? Right-click it to trade it for **Tarnished Undermine Reals**:
   2 to 5 for a companion or mount, 15 for an epic companion and 25 for an epic mount, straight
   into your wallet.
+- The **Prophet's** and the **Archmage's Great Raven** in the coin shop now come with their
+  feathered cowl, mantle, drape and standard, mailed to the character you buy them for. Druids
+  also get the raven as a Flight Form look.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.

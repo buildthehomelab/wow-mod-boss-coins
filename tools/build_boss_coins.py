@@ -39,6 +39,10 @@ Both read the same files in data/, so the server and the client can't disagree:
                phase (0-18) the account's furthest character must have reached before the offer
                can be bought (0 = from the start); the shop shows it locked until then. Add your
                own rows to the table from SHOP_OWN_IDS on.
+- shop-extras.tsv  items that come with an offer of shop.tsv, `count` of each, mailed to the
+               character it is bought for, in one mail (at most MAIL_ITEMS per offer): the
+               looks of a retail shop bundle that come with its mount. They come with an
+               account-wide mount too, whose mount itself isn't mailed.
 
 --sql writes the world SQL. It needs nothing but the files above.
 
@@ -100,6 +104,7 @@ PIX_SCRIPT = "npc_boss_coins_pix"   # adds the account wallet's options to her m
 
 SHOP_OWN_IDS = 1000             # shop offers below this id are the module's
 SHOP_SERVICES = {1: "rename", 2: "customize", 3: "race change", 4: "faction change"}
+MAIL_ITEMS = 12                 # items one mail can hold (MAX_MAIL_ITEMS)
 SHOP_PHASES = range(0, 19)       # mod-individual-progression's phases, 0 (new character) to 18
 SHOP_PHASE_COMMENT = "mod-individual-progression phase the furthest character of the account must have reached; 0 = from the start"
 
@@ -194,7 +199,21 @@ def load():
         if offer["phase"] not in SHOP_PHASES:
             sys.exit("shop.tsv: offer %d has phase %d, which is no progression phase (0-18)" % (offer["id"], offer["phase"]))
         shop.append(offer)
-    return costs, list(pages.values()), sources, credits, shop
+
+    extras = []
+    items_of = {o["id"]: o for o in shop if o["item"]}
+    for r in read_tsv("shop-extras.tsv"):
+        extra = dict(offer=int(r["offer"]), item=int(r["item"]), count=int(r["count"]), comment=r["comment"])
+        if extra["offer"] not in items_of:
+            sys.exit("shop-extras.tsv: offer %d isn't an item offer of shop.tsv" % extra["offer"])
+        if extra["item"] == items_of[extra["offer"]]["item"] or (extra["offer"], extra["item"]) in [(e["offer"], e["item"]) for e in extras]:
+            sys.exit("shop-extras.tsv: offer %d has item %d twice" % (extra["offer"], extra["item"]))
+        if not 0 < extra["count"] < 256:
+            sys.exit("shop-extras.tsv: offer %d, item %d needs a count of 1-255" % (extra["offer"], extra["item"]))
+        extras.append(extra)
+        if sum(e["offer"] == extra["offer"] for e in extras) > MAIL_ITEMS:
+            sys.exit("shop-extras.tsv: offer %d has more than %d items, one mail's worth" % (extra["offer"], MAIL_ITEMS))
+    return costs, list(pages.values()), sources, credits, shop, extras
 
 
 # --- SQL ---------------------------------------------------------------------------------------
@@ -212,7 +231,7 @@ CONDITION_COLUMNS = ("INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `Sour
                      "`ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES\n")
 
 
-def write_sql(path, costs, pages, sources, credits, shop):
+def write_sql(path, costs, pages, sources, credits, shop, extras):
     lists = [p["vendor"] for p in pages]
     with open(path, "w", encoding="utf-8") as f:
         w = f.write
@@ -229,6 +248,7 @@ def write_sql(path, costs, pages, sources, credits, shop):
         w("--   mod_boss_coins_source  which bosses give coins, and how many.\n")
         w("--   mod_boss_coins_credit  creatures whose death also counts as one of those bosses.\n")
         w("--   mod_boss_coins_shop    what the launcher's shop sells for wallet coins.\n")
+        w("--   mod_boss_coins_shop_extra  items that come with a shop offer.\n")
         w("--\n")
         w("-- This module's ids: item %d and ItemExtendedCost %d-%d; creature entries, the spawn\n" % (
             COIN, COST_IDS[0], COST_IDS[-1]))
@@ -380,9 +400,24 @@ def write_sql(path, costs, pages, sources, credits, shop):
             o["price"], o["phase"], o["item"], o["count"], o["service"], o["sort"], sql_str(o["comment"])) for o in shop) + "\n")
         w("ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `name` = VALUES(`name`), `description` = VALUES(`description`), "
           "`icon` = VALUES(`icon`), `phase` = VALUES(`phase`), `item` = VALUES(`item`), `count` = VALUES(`count`), "
-          "`service` = VALUES(`service`), `comment` = VALUES(`comment`);\n")
-    print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses, %d shop offers" % (
-        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits), len(shop)))
+          "`service` = VALUES(`service`), `comment` = VALUES(`comment`);\n\n")
+
+        w("-- Items that come with a shop offer, mailed to the character it is bought for in one mail\n")
+        w("-- (at most %d items an offer), also when the offer's own mount or companion goes to the\n" % MAIL_ITEMS)
+        w("-- whole account. An item that isn't on the server is left out. Offers below %d are this\n" % SHOP_OWN_IDS)
+        w("-- module's, and so are their rows here: add your own for your own offers.\n")
+        w("CREATE TABLE IF NOT EXISTS `mod_boss_coins_shop_extra` (\n")
+        w("  `offer` INT UNSIGNED NOT NULL COMMENT 'mod_boss_coins_shop id',\n")
+        w("  `item` INT UNSIGNED NOT NULL COMMENT 'item_template entry, mailed',\n")
+        w("  `count` TINYINT UNSIGNED NOT NULL DEFAULT 1,\n")
+        w("  `comment` VARCHAR(255) NOT NULL DEFAULT '',\n")
+        w("  PRIMARY KEY (`offer`, `item`)\n")
+        w(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='mod-boss-coins: items that come with a shop offer';\n")
+        w("DELETE FROM `mod_boss_coins_shop_extra` WHERE `offer` < %d;\n" % SHOP_OWN_IDS)
+        w("INSERT INTO `mod_boss_coins_shop_extra` (`offer`, `item`, `count`, `comment`) VALUES\n")
+        w(",\n".join("(%d, %d, %d, %s)" % (e["offer"], e["item"], e["count"], sql_str(e["comment"])) for e in extras) + ";\n")
+    print("wrote %s: %d items on %d pages, %d prices, %d coin sources, %d stand-in bosses, %d shop offers, %d extras" % (
+        path, sum(len(p["stock"]) for p in pages), len(pages), len(costs), len(sources), len(credits), len(shop), len(extras)))
 
 
 # --- DBC ---------------------------------------------------------------------------------------
@@ -560,9 +595,9 @@ def main():
     if bool(args.patch_w) != bool(args.out):
         ap.error("--patch-w and --out go together")
 
-    costs, pages, sources, credits, shop = load()
+    costs, pages, sources, credits, shop, extras = load()
     if args.sql:
-        write_sql(args.sql, costs, pages, sources, credits, shop)
+        write_sql(args.sql, costs, pages, sources, credits, shop, extras)
     if args.patch_w:
         with tempfile.TemporaryDirectory() as tmp:
             unpacked = os.path.join(tmp, "w")

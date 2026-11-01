@@ -16,6 +16,10 @@
  * Such an offer is `account` in the listing, no character is `cannot`, and the account owns it
  * as soon as one character knows it. Without the table it is mailed as before.
  *
+ * World table mod_boss_coins_shop_extra lists items that come with an offer (the looks of a
+ * retail shop bundle that come with its mount). They are mailed to the character the offer is
+ * bought for, all in one mail of their own, also when the offer itself goes to the account.
+ *
  * The launcher talks to the portal, and the portal to these two commands, over SOAP. They are
  * console commands: a player, a game master too, can't run them in game. Both answer one line
  * of JSON, errors included, so the portal never has to read a SOAP fault.
@@ -97,6 +101,7 @@ namespace
         uint8 phase = 0;        // the progression phase the account must have reached
         uint32 teaches = 0;     // the spell the item teaches, if it is one that does
         uint8 accountKind = ACCOUNT_NONE;   // what `teaches` is, when the account can be given it
+        std::vector<std::pair<uint32, uint32>> extras;  // items that come with it (mod_boss_coins_shop_extra), and how many
         // what the item asks of the character that uses it
         uint32 requiredLevel = 0;
         uint32 requiredSkill = 0;
@@ -524,8 +529,30 @@ namespace
         return true;    // an answer, not a failed command: SOAP passes it on as it is
     }
 
+    // What comes with the offer, in one mail of its own: the offer's own item may go to the whole
+    // account, these always go to the character it is bought for.
+    void MailExtras(Offer const& offer, Character const& character, CharacterDatabaseTransaction trans)
+    {
+        if (offer.extras.empty())
+            return;
+
+        MailDraft draft(fmt::format("Your order: {}, what comes with it", offer.name),
+            fmt::format("And here's what comes with the {}, {}. Take it out of the mailbox within {} days, "
+                "or it's gone.\n\n-- Pix Xizzix, Undermine Real Exchange", offer.name, character.name, SHOP_MAIL_DAYS));
+        for (auto const& [entry, count] : offer.extras)
+            if (Item* item = Item::CreateItem(entry, count, character.online))
+            {
+                item->SaveToDB(trans);
+                draft.AddItem(item);
+            }
+        draft.SendMailTo(trans, MailReceiver(character.online, character.guid), MailSender(MAIL_CREATURE, NPC_PIX_XIZZIX),
+            MAIL_CHECK_MASK_NONE, 0, SHOP_MAIL_DAYS);
+    }
+
     void Deliver(Offer const& offer, uint32 account, Character const& character, CharacterDatabaseTransaction trans)
     {
+        MailExtras(offer, character, trans);
+
         if (AccountWide(offer))
         {
             // Into the sharing module's table, which every character reads at its login. The
@@ -568,8 +595,15 @@ namespace
             return;
 
         ChatHandler chat(player->GetSession());
-        if (offer.item)
-            chat.PSendSysMessage("Pix Xizzix has mailed you the {} you bought in the shop. Check your mailbox.", offer.name);
+        if (AccountWide(offer))
+        {
+            // The offer itself is told about once its write is done (TeachAccount).
+            if (!offer.extras.empty())
+                chat.PSendSysMessage("Pix Xizzix has mailed you what comes with the {} you bought in the shop. Check your mailbox.", offer.name);
+        }
+        else if (offer.item)
+            chat.PSendSysMessage("Pix Xizzix has mailed you the {} you bought in the shop{}. Check your mailbox.", offer.name,
+                offer.extras.empty() ? "" : ", and what comes with it");
         else
             chat.PSendSysMessage("You bought a {} in the shop. Log out to the character list to use it.", offer.name);
     }
@@ -676,6 +710,41 @@ void BossCoins::Shop::Load()
     }
 
     LOG_INFO("server.loading", "mod-boss-coins: {} shop offer(s) loaded, {} skipped", offers.size(), skipped);
+
+    // What comes with the offers.
+    uint32 extras = 0;
+    if (QueryResult result = WorldDatabase.Query("SELECT offer, item, count FROM mod_boss_coins_shop_extra ORDER BY offer, item"))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 id = fields[0].Get<uint32>();
+            uint32 entry = fields[1].Get<uint32>();
+            auto itr = std::find_if(offers.begin(), offers.end(), [id](Offer const& o) { return o.id == id; });
+            Offer* offer = itr != offers.end() ? &*itr : nullptr;
+            // Rows for an offer that isn't for sale, or for another module's items on a server without that module.
+            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(entry);
+            if (!offer || !proto)
+                continue;
+
+            if (!offer->item)
+            {
+                LOG_ERROR("server.loading", "mod-boss-coins: shop offer {} is a service; item {} can't come with it", id, entry);
+                continue;
+            }
+            if (offer->extras.size() >= MAX_MAIL_ITEMS)
+            {
+                LOG_ERROR("server.loading", "mod-boss-coins: shop offer {} has more than {} items that come with it, one mail's worth; "
+                    "item {} left out", id, MAX_MAIL_ITEMS, entry);
+                continue;
+            }
+
+            offer->extras.emplace_back(entry, std::clamp<uint32>(fields[2].Get<uint8>(), 1, proto->GetMaxStackSize()));
+            ++extras;
+        } while (result->NextRow());
+    }
+    if (extras)
+        LOG_INFO("server.loading", "mod-boss-coins: {} item(s) come with shop offers", extras);
 
     // The sharing modules' tables, for account-wide purchases. Looked for even with the setting
     // off: .reload config can turn it on without a .coinshop reload.
@@ -854,8 +923,7 @@ public:
                         offerId, guid, account, price, price);
             });
 
-        if (!accountWide)
-            TellPlayer(*offer, character);
+        TellPlayer(*offer, character);
 
         LOG_INFO("module", "mod-boss-coins: account {} bought shop offer {} ({}) for {} ({}){}, {} coins",
             account, offer->id, offer->name, character.name, character.guid, accountWide ? " and the whole account" : "", offer->price);
@@ -867,6 +935,10 @@ public:
             : offer->item
             ? fmt::format("The {} is in {}'s mailbox.", offer->name, character.name)
             : fmt::format("{} gets the {} at the character list.", character.name, offer->name);
+        if (!offer->extras.empty())
+            message += accountWide
+                ? fmt::format(" What comes with it is in {}'s mailbox.", character.name)
+                : " What comes with it is in the mailbox too.";
         Answer(handler, fmt::format("{{\"ok\":true,\"balance\":{},\"message\":{}}}", Wallet::Balance(account), JsonString(message)));
         return true;
     }
