@@ -14,7 +14,8 @@
  * they read at every login) and, once that write is done, every real character of the account
  * in the game learns it.
  * Such an offer is `account` in the listing, no character is `cannot`, and the account owns it
- * as soon as one character knows it. Without the table it is mailed as before.
+ * as soon as one character knows it. Without the table it is mailed as before, unless it is free
+ * and could be sold or traded (CannotUse).
  *
  * World table mod_boss_coins_shop_extra lists items that come with an offer (the looks of a
  * retail shop bundle that come with its mount). They are mailed to the character the offer is
@@ -26,12 +27,14 @@
  *
  * .coinshop list <account id>
  *     {"ok":true,"balance":12,"phase":3,"characters":[{"guid","name","race","class","gender",
- *     "level","online"}],"offers":[{"id","category","name","description","icon","price","phase",
- *     "locked","unlock","account","owned":[guids],"cannot":[guids]}]}. `owned`: characters that
+ *     "level","online"}],"offers":[{"id","category","section","name","description","icon","price","phase",
+ *     "locked","unlock","account","owned":[guids],"cannot":[guids]}]}. `section`: the heading the
+ *     launcher lists the offer under within its category, empty for none. `owned`: characters that
  *     have it already (an item in their bags, bank or mail, or the spell it teaches; a service
  *     waiting for their next login; an order still being written; every character for an
  *     `account` offer the account has). `cannot`: characters that can't use
- *     the item: race, class, level, or a skill it needs (riding, for a mount). The top `phase`
+ *     the item: race, class, level, or a skill it needs (riding, for a mount); or every character,
+ *     for a free item that would be mailed and could be sold or traded. The top `phase`
  *     is the account's: the mod-individual-progression phase of its furthest character. An
  *     offer with a higher `phase` is `locked` for every character, and `unlock` says what
  *     opens it, as a sentence ("Defeat Ragnaros in Molten Core with any character to unlock it.";
@@ -91,6 +94,7 @@ namespace
     {
         uint32 id = 0;
         std::string category;
+        std::string section;
         std::string name;
         std::string description;
         std::string icon;
@@ -305,8 +309,8 @@ namespace
     }
 
     // Why the character can't use the offer's item: its race or class, its level, a skill it
-    // lacks (riding, for a mount). Empty if it can. A mount bought for a character that can't
-    // learn it would only sit in the bags.
+    // lacks (riding, for a mount), or a free item it could sell. Empty if it can. A mount bought
+    // for a character that can't learn it would only sit in the bags.
     std::string CannotUse(Offer const& offer, Character const& character)
     {
         // An account-wide mount or companion is for every character: the sharing module decides
@@ -317,6 +321,11 @@ namespace
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(offer.item);
         if (!proto || !(proto->AllowableClass & (1u << (character.cls - 1))) || !(proto->AllowableRace & (1u << (character.race - 1))))
             return fmt::format("{} can't use the {}.", character.name, offer.name);
+
+        // Mailed for nothing, an item that can be vendored or traded could be claimed, sold and
+        // claimed again without end: what "owned" sees is only what the character holds now.
+        if (!offer.price && (proto->Bonding != BIND_WHEN_PICKED_UP || proto->SellPrice))
+            return fmt::format("The {} is only free on a server that shares mounts and companions.", offer.name);
 
         if (character.level < offer.requiredLevel)
             return fmt::format("{} needs level {} for the {}.", character.name, offer.requiredLevel, offer.name);
@@ -654,7 +663,7 @@ void BossCoins::Shop::Load()
     offers.clear();
 
     uint32 skipped = 0;
-    if (QueryResult result = WorldDatabase.Query("SELECT id, category, name, description, icon, price, item, count, service, phase "
+    if (QueryResult result = WorldDatabase.Query("SELECT id, category, name, description, icon, price, item, count, service, phase, section "
         "FROM mod_boss_coins_shop WHERE enabled = 1 ORDER BY sort, id"))
     {
         do
@@ -671,6 +680,7 @@ void BossCoins::Shop::Load()
             offer.count = std::max<uint32>(fields[7].Get<uint8>(), 1);
             offer.service = fields[8].Get<uint8>();
             offer.phase = std::min<uint8>(fields[9].Get<uint8>(), PROGRESSION_LAST_PHASE);
+            offer.section = fields[10].Get<std::string>();
 
             if ((offer.item != 0) == (offer.service != SERVICE_NONE)
                 || (offer.service && ServiceFlag(offer.service) == AT_LOGIN_NONE))
@@ -819,9 +829,9 @@ public:
             }
 
             bool locked = Locked(o, phase);
-            json += fmt::format("{}{{\"id\":{},\"category\":{},\"name\":{},\"description\":{},\"icon\":{},\"price\":{},"
+            json += fmt::format("{}{{\"id\":{},\"category\":{},\"section\":{},\"name\":{},\"description\":{},\"icon\":{},\"price\":{},"
                 "\"phase\":{},\"locked\":{},\"unlock\":{},\"account\":{},\"owned\":[{}],\"cannot\":[{}]}}",
-                i ? "," : "", o.id, JsonString(o.category), JsonString(o.name), JsonString(o.description), JsonString(o.icon),
+                i ? "," : "", o.id, JsonString(o.category), JsonString(o.section), JsonString(o.name), JsonString(o.description), JsonString(o.icon),
                 o.price, o.phase, locked ? "true" : "false", JsonString(locked ? UnlockText(o) : ""), AccountWide(o) ? "true" : "false",
                 IdList(have), IdList(cannot));
         }

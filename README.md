@@ -141,6 +141,8 @@ Wisdom gear (mod-retail-pets 90690-90697): a feathered cowl, mantle and drape an
 | Its 78 retail shop mounts (Grrlocs, Chaos-Forged mounts, Witchwick's Riders, ...) | 100 + 10 per progression phase: 110 to 280 |
 | ... of which the Prophet's and the Archmage's Great Raven come with their feathered cowl, mantle, drape and standard | 240 each (phase 14) |
 | The core's Celestial Steed (item 54811) | 180 (phase 8) |
+| BlizzCon's mounts and companions, in a `blizzcon` category with a section per year (see below) | 15 to 250 |
+| Recruit-A-Friend's mounts and companions, in a `recruit` category with a section per year (see below) | free |
 
 **Progression.** An offer can wait for a
 [mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) phase
@@ -157,11 +159,56 @@ phases 8-12, Wrath of the Lich King from 13, the Kil'jaeden kill that opens Nort
 limit is raised. Without mod-individual-progression (no quest 66001 on the server) every
 offer is for sale.
 
+**BlizzCon.** The `blizzcon` category lists every BlizzCon mount and companion, and the Murloc
+Costume, under a `section` per year: the launcher shows the year as a heading over its offers. The
+older it is the more it costs, and the first four years, from before the virtual ticket, cost most:
+
+| Year | Offer | Price |
+| --- | --- | --- |
+| 2005 | Murky | 100 |
+| 2007 | Murloc Costume | 100 |
+| 2008 | Big Blizzard Bear | 250 (phase 1) |
+| 2009 | Grunty | 90 |
+| 2010 | Deathy | 60 |
+| 2011 | Murkablo | 55 |
+| 2013 | Murkalot | 50 |
+| 2014 | Grommloc | 45 |
+| 2015 | Murkidan | 40 |
+| 2016 | Legionnaire Murky, Knight-Captain Murky | 35 each |
+| 2017 | Stormwind Skychaser, Orgrimmar Interceptor | 250 each (phase 8) |
+| 2019 | Gillvanas, Finduin | 30 each |
+| 2021 | Snowstorm | 180 (phase 1) |
+| 2021 | Moon-Touched Netherwhelp | 25 |
+| 2023 | Bound Blizzard | 200 (phase 8) |
+| 2023 | Ysergle | 20 |
+| 2026 | Rabbit'ath | 180 (phase 8) |
+| 2026 | Murk'atath, Classic Clockwork Quacker | 15 each |
+
+The Big Blizzard Bear, Murky, Grunty and the costume are the core's items, the others those of
+[mod-retail-collection](https://github.com/buildthehomelab/wow-mod-retail-collection). The ground
+mounts wait for phase 1 and the flyers for The Burning Crusade, like the shop's other mounts.
+
+**Recruit-A-Friend.** The `recruit` category lists the program's mounts and companions the same way, by the year each became a reward, and all of them are free:
+
+| Year | Offers |
+| --- | --- |
+| 2008 | Swift Zhevra (phase 1) |
+| 2010 | X-53 Touring Rocket (phase 8) |
+| 2013 | Emerald Hippogryph (phase 8), Golden Pig, Silver Pig |
+| 2015 | Cindermane Charger (phase 8) |
+| 2019 | Explorer's Dunetrekker (phase 1), Explorer's Jungle Hopper (phase 8), Rikki |
+| 2023 | Rocket Shredder 9001 (phase 8), Volatile Self-Driving Toolbox |
+
+A free offer isn't a way to farm the item. On a server that doesn't share mounts and companions it
+is mailed, so one that can be sold or traded is refused there (`cannot`): only a soulbound item
+with no vendor price, like Whoofle Bramblewing, stays free without the sharing modules.
+
 An item that isn't on the server is left out, so the pandas only show with that module
 installed. A character that already has an item (in bags, bank or mail, or the spell it
 teaches), or has the service waiting, isn't sold it again. Neither is a character that can't
 use the item: its race or class, its level, or a skill it needs (a mount needs riding). A
-price of 0 makes an offer free, with the same rules: one per character, and no coins move.
+price of 0 makes an offer free, with the same rules: one per character, and no coins move. A
+free item that would be mailed and could be sold or traded isn't offered at all.
 
 There is no shop window in the game. A launcher or website shows it, through two console
 commands that it runs over [SOAP](https://www.azerothcore.org/wiki/remote-access) (with an
@@ -431,6 +478,10 @@ Category: Dungeons & Raids
 - The **Prophet's** and the **Archmage's Great Raven** in the coin shop now come with their
   feathered cowl, mantle, drape and standard, mailed to the character you buy them for. Druids
   also get the raven as a Flight Form look.
+- The coin shop has a new **BlizzCon** tab: every BlizzCon mount and companion from **Murky** in
+  2005 to **Rabbit'ath** in 2026, listed by year.
+- The coin shop also has a **Recruit-A-Friend** tab: the program's mounts and companions, from the
+  **Swift Zhevra** to the **Rocket Shredder 9001**, listed by year and **free**.
 
 > Nobody should clear Molten Core sixteen times and still be missing their gloves. Every boss
 > you kill now gets you a little closer to the piece that won't drop.
