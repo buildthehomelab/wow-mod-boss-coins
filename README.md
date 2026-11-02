@@ -188,16 +188,19 @@ The Big Blizzard Bear, Murky, Grunty and the costume are the core's items, the o
 [mod-retail-collection](https://github.com/buildthehomelab/wow-mod-retail-collection). The ground
 mounts wait for phase 1 and the flyers for The Burning Crusade, like the shop's other mounts.
 
-**Recruit-A-Friend.** The `recruit` category lists the program's mounts and companions the same way, by the year each became a reward, and all of them are free:
+**Recruit-A-Friend.** The `recruit` category lists the program's mounts and companions the same way, by the year each became a reward. All of them are free, and none waits for a progression phase:
 
 | Year | Offers |
 | --- | --- |
-| 2008 | Swift Zhevra (phase 1) |
-| 2010 | X-53 Touring Rocket (phase 8) |
-| 2013 | Emerald Hippogryph (phase 8), Golden Pig, Silver Pig |
-| 2015 | Cindermane Charger (phase 8) |
-| 2019 | Explorer's Dunetrekker (phase 1), Explorer's Jungle Hopper (phase 8), Rikki |
-| 2023 | Rocket Shredder 9001 (phase 8), Volatile Self-Driving Toolbox |
+| 2008 | Swift Zhevra |
+| 2010 | X-53 Touring Rocket |
+| 2013 | Emerald Hippogryph, Golden Pig, Silver Pig |
+| 2015 | Cindermane Charger |
+| 2019 | Explorer's Dunetrekker, Explorer's Jungle Hopper, Rikki |
+| 2023 | Rocket Shredder 9001, Volatile Self-Driving Toolbox |
+
+The X-53 Touring Rocket has no ground form: it can be claimed from the start, but only summoned in
+Outland and Northrend.
 
 A free offer isn't a way to farm the item. On a server that doesn't share mounts and companions it
 is mailed, so one that can be sold or traded is refused there (`cannot`): only a soulbound item

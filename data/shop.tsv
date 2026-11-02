@@ -100,7 +100,7 @@ id	category	item	count	service	price	phase	sort	section	name	description	icon	co
 286	mount	90678	1	0	220	12	240			A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Ash'adar, Harbinger of Dawn
 301	blizzcon	20371	1	0	100	0	20050	BlizzCon 2005	Murky	From BlizzCon 2005. A companion that follows you around.		core: Blue Murloc Egg
 302	blizzcon	33079	1	0	100	0	20070	BlizzCon 2007		From BlizzCon 2007. Turns you into a murloc. It stays in your bags.		core: Murloc Costume
-303	blizzcon	43599	1	0	250	1	20080	BlizzCon 2008		From BlizzCon 2008. A mount. Sold to characters with Apprentice Riding.		core: Big Blizzard Bear
+303	blizzcon	43599	1	0	250	1	20080	BlizzCon 2008		From BlizzCon 2008. A mount.		core: Big Blizzard Bear
 304	blizzcon	46802	1	0	90	0	20090	BlizzCon 2009	Grunty	From BlizzCon 2009. A companion that follows you around.		core: Heavy Murloc Egg
 305	blizzcon	410294	1	0	60	0	20100	BlizzCon 2010		From BlizzCon 2010. A companion that follows you around.		mod-retail-collection: Deathy
 306	blizzcon	410329	1	0	55	0	20110	BlizzCon 2011		From BlizzCon 2011. A companion that follows you around.		mod-retail-collection: Murkablo
@@ -109,25 +109,25 @@ id	category	item	count	service	price	phase	sort	section	name	description	icon	co
 309	blizzcon	411454	1	0	40	0	20150	BlizzCon 2015		From BlizzCon 2015. A companion that follows you around.		mod-retail-collection: Murkidan
 310	blizzcon	411939	1	0	35	0	20160	BlizzCon 2016		From BlizzCon 2016. A companion that follows you around.		mod-retail-collection: Legionnaire Murky
 311	blizzcon	411940	1	0	35	0	20160	BlizzCon 2016		From BlizzCon 2016. A companion that follows you around.		mod-retail-collection: Knight-Captain Murky
-312	blizzcon	400959	1	0	250	8	20170	BlizzCon 2017		From BlizzCon 2017. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Stormwind Skychaser
-313	blizzcon	400960	1	0	250	8	20170	BlizzCon 2017		From BlizzCon 2017. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Orgrimmar Interceptor
+312	blizzcon	400959	1	0	250	8	20170	BlizzCon 2017		From BlizzCon 2017. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Stormwind Skychaser
+313	blizzcon	400960	1	0	250	8	20170	BlizzCon 2017		From BlizzCon 2017. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Orgrimmar Interceptor
 314	blizzcon	412777	1	0	30	0	20190	BlizzCon 2019		From BlizzCon 2019. A companion that follows you around.		mod-retail-collection: Gillvanas
 315	blizzcon	412778	1	0	30	0	20190	BlizzCon 2019		From BlizzCon 2019. A companion that follows you around.		mod-retail-collection: Finduin
-316	blizzcon	401424	1	0	180	1	20210	BlizzCon 2021		From BlizzCon 2021. A mount. Sold to characters with Apprentice Riding.		mod-retail-collection: Snowstorm
+316	blizzcon	401424	1	0	180	1	20210	BlizzCon 2021		From BlizzCon 2021. A mount.		mod-retail-collection: Snowstorm
 317	blizzcon	413053	1	0	25	0	20210	BlizzCon 2021		From BlizzCon 2021. A companion that follows you around.		mod-retail-collection: Moon-Touched Netherwhelp
-318	blizzcon	401517	1	0	200	8	20230	BlizzCon 2023		From BlizzCon 2023. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Bound Blizzard
+318	blizzcon	401517	1	0	200	8	20230	BlizzCon 2023		From BlizzCon 2023. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Bound Blizzard
 319	blizzcon	413579	1	0	20	0	20230	BlizzCon 2023		From BlizzCon 2023. A companion that follows you around.		mod-retail-collection: Ysergle
-320	blizzcon	402984	1	0	180	8	20260	BlizzCon 2026		From BlizzCon 2026. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Rabbit'ath
+320	blizzcon	402984	1	0	180	8	20260	BlizzCon 2026		From BlizzCon 2026. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Rabbit'ath
 321	blizzcon	415064	1	0	15	0	20260	BlizzCon 2026		From BlizzCon 2026. A companion that follows you around.		mod-retail-collection: Murk'atath
 322	blizzcon	415123	1	0	15	0	20260	BlizzCon 2026		From BlizzCon 2026. A companion that follows you around.		mod-retail-collection: Classic Clockwork Quacker
-331	recruit	37719	1	0	0	1	20080	Recruit-A-Friend 2008		A Recruit-A-Friend reward from 2008. A mount. Sold to characters with Journeyman Riding.		core: Swift Zhevra
-332	recruit	54860	1	0	0	8	20100	Recruit-A-Friend 2010		A Recruit-A-Friend reward from 2010. A mount. Sold to characters with Expert Riding. It flies where flying mounts can.		core: X-53 Touring Rocket
-333	recruit	400454	1	0	0	8	20150	Recruit-A-Friend 2015		A Recruit-A-Friend reward from 2015. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Cindermane Charger
-334	recruit	400568	1	0	0	8	20130	Recruit-A-Friend 2013		A Recruit-A-Friend reward from 2013. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Emerald Hippogryph
+331	recruit	37719	1	0	0	0	20080	Recruit-A-Friend 2008		A Recruit-A-Friend reward from 2008. A mount.		core: Swift Zhevra
+332	recruit	54860	1	0	0	0	20100	Recruit-A-Friend 2010		A Recruit-A-Friend reward from 2010. A flying mount: it can only be summoned where flying mounts can fly, in Outland and Northrend, with Expert Riding.		core: X-53 Touring Rocket
+333	recruit	400454	1	0	0	0	20150	Recruit-A-Friend 2015		A Recruit-A-Friend reward from 2015. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Cindermane Charger
+334	recruit	400568	1	0	0	0	20130	Recruit-A-Friend 2013		A Recruit-A-Friend reward from 2013. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Emerald Hippogryph
 335	recruit	34518	1	0	0	0	20130	Recruit-A-Friend 2013	Golden Pig	A Recruit-A-Friend reward from 2013. A companion that follows you around.		core: Golden Pig Coin
 336	recruit	34519	1	0	0	0	20130	Recruit-A-Friend 2013	Silver Pig	A Recruit-A-Friend reward from 2013. A companion that follows you around.		core: Silver Pig Coin
-337	recruit	401288	1	0	0	1	20190	Recruit-A-Friend 2019		A Recruit-A-Friend reward from 2019. A mount. Sold to characters with Apprentice Riding.		mod-retail-collection: Explorer's Dunetrekker
-338	recruit	401287	1	0	0	8	20190	Recruit-A-Friend 2019		A Recruit-A-Friend reward from 2019. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Explorer's Jungle Hopper
+337	recruit	401288	1	0	0	0	20190	Recruit-A-Friend 2019		A Recruit-A-Friend reward from 2019. A mount.		mod-retail-collection: Explorer's Dunetrekker
+338	recruit	401287	1	0	0	0	20190	Recruit-A-Friend 2019		A Recruit-A-Friend reward from 2019. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Explorer's Jungle Hopper
 339	recruit	412776	1	0	0	0	20190	Recruit-A-Friend 2019		A Recruit-A-Friend reward from 2019. A companion that follows you around.		mod-retail-collection: Rikki
-340	recruit	401698	1	0	0	8	20230	Recruit-A-Friend 2023		A Recruit-A-Friend reward from 2023. A mount. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Rocket Shredder 9001
+340	recruit	401698	1	0	0	0	20230	Recruit-A-Friend 2023		A Recruit-A-Friend reward from 2023. A mount. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Rocket Shredder 9001
 341	recruit	413475	1	0	0	0	20230	Recruit-A-Friend 2023		A Recruit-A-Friend reward from 2023. A companion that follows you around.		mod-retail-collection: Volatile Self-Driving Toolbox
