@@ -11,14 +11,18 @@
  *     a roll), the spell goes in the sharing module's table and the item is gone. The character
  *     learns it at once if it can use the item; the account's other characters learn it at their
  *     next login (the sharing module). A level 20 alt can loot a level 60 mount for its account.
+ *     A Self-Found character (mod-challenges), which the sharing module leaves out at login,
+ *     learns what it finds at once whatever its level or skill, also when the account has it,
+ *     unless it could never use it. The item goes the same way: its second copy is the spare.
  *   - Right-clicking one does the same, whatever the item asks of the character: one taken out
  *     of the mail, or one from before the module did this.
  *   - A mount or companion that an achievement gives is given once per ACCOUNT. Nothing is
  *     mailed: the first character to earn the achievement collects it, the next ones get nothing
- *     (titles still come). Which accounts had it is kept in mod_boss_coins_collection_achievement,
- *     which deleting characters doesn't touch, so a new alt can't earn it again for a spare. An
- *     account that lost the spell (the sharing modules forget an account's spells when its last
- *     character is deleted) gets the spell back, never an item.
+ *     (titles still come) but a Self-Found one, which learns the spell. Which accounts had it is
+ *     kept in mod_boss_coins_collection_achievement, which deleting characters doesn't touch, so
+ *     a new alt can't earn it again for a spare. An account that lost the spell (the sharing
+ *     modules forget an account's spells when its last character is deleted) gets the spell back,
+ *     never an item.
  *   - A spare from a drop is worth coins: right-click one the account has already and a box
  *     offers to trade it for Tarnished Undermine Reals, paid into the account wallet (or, when
  *     this character doesn't know it yet and can use it, to learn it and keep the spare). Only
@@ -242,7 +246,24 @@ namespace
         return "[" + proto->Name1 + "]";
     }
 
-    // Writes the spell to the account and teaches the character if it can use the item. `item`,
+    // Whether the character learns what the item teaches now. One that can't use the item yet
+    // learns it from the sharing module at its next login, whatever its level or skill. That
+    // module leaves a Self-Found character (mod-challenges) out, so it learns what it found or
+    // earned itself here, unless it could never use the item.
+    bool CanLearnNow(Player* player, ItemTemplate const* proto)
+    {
+        InventoryResult result = player->CanUseItem(proto);
+        return result == EQUIP_ERR_OK || (result != EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM && IsSelfFound(player->GetGUID().GetCounter()));
+    }
+
+    // A Self-Found character that doesn't know what it found or earned is given it even when the
+    // account has it: nothing else will teach it, and trading the item away would lose it.
+    bool SelfFoundLearns(Player* player, ItemTemplate const* proto, uint32 spell)
+    {
+        return IsSelfFound(player->GetGUID().GetCounter()) && !player->HasSpell(spell) && CanLearnNow(player, proto);
+    }
+
+    // Writes the spell to the account and teaches the character if it can learn it now. `item`,
     // when there is one, is destroyed in the same transaction as the write.
     void GiveAccount(Player* player, ItemTemplate const* proto, uint32 spell, uint8 kind, Item* item)
     {
@@ -260,12 +281,21 @@ namespace
             recentGrants[Key(account, spell)] = NowMs();
         }
 
-        bool learned = !player->HasSpell(spell) && player->CanUseItem(proto) == EQUIP_ERR_OK;
+        bool selfFound = IsSelfFound(player->GetGUID().GetCounter());
+        bool learned = !player->HasSpell(spell) && CanLearnNow(player, proto);
         if (learned)
+        {
             player->learnSpell(spell);
+            // The item is gone already, and the sharing module won't teach a Self-Found character
+            // at login: saved now, so a crash can't lose both.
+            if (item && selfFound)
+                player->SaveToDB(false, false);
+        }
 
         if (IsRealPlayer(player))
-            ChatHandler(player->GetSession()).PSendSysMessage(learned
+            ChatHandler(player->GetSession()).PSendSysMessage(learned && selfFound
+                ? "You learn {}."
+                : learned
                 ? "{} is in your account's collection now: you know it, and your other characters learn it when they log in."
                 : "{} is in your account's collection now: your characters learn it when they log in.", Bracketed(proto));
 
@@ -359,7 +389,7 @@ namespace
         if (!Collectable(proto, spell, kind))
             return;
 
-        if (!AccountHas(player, spell, kind))
+        if (SelfFoundLearns(player, proto, spell) || !AccountHas(player, spell, kind))
         {
             GiveAccount(player, proto, spell, kind, item);
             return;
@@ -761,7 +791,7 @@ public:
             CharacterDatabase.Execute("INSERT IGNORE INTO mod_boss_coins_collection_achievement (account, achievement, item, guid) "
                 "VALUES ({}, {}, {}, {})", account, achievement->ID, proto->ItemId, player->GetGUID().GetCounter());
 
-        if (AccountHas(player, spell, kind))
+        if (!SelfFoundLearns(player, proto, spell) && AccountHas(player, spell, kind))
         {
             if (IsRealPlayer(player))
                 ChatHandler(player->GetSession()).PSendSysMessage(first ? "Your account has {} already." :
@@ -813,7 +843,7 @@ public:
         }
         lastUse->ms = now;
 
-        if (!AccountHas(player, spell, kind))
+        if (SelfFoundLearns(player, proto, spell) || !AccountHas(player, spell, kind))
         {
             GiveAccount(player, proto, spell, kind, item);
             return false;
