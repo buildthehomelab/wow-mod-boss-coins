@@ -98,6 +98,7 @@ id	category	item	count	service	price	phase	sort	section	name	description	icon	co
 284	mount	90676	1	0	200	10	234			A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Alabaster Thunderwing
 285	mount	90677	1	0	220	12	240			A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Sapphire Skyblazer
 286	mount	90678	1	0	220	12	240			A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-pets: Ash'adar, Harbinger of Dawn
+287	mount	403000	1	0	180	8	222			A mount, mailed to the character. Sold to characters with Apprentice Riding. It flies where flying mounts can, with Expert Riding.		mod-retail-collection: Shadowbound Storybook
 301	blizzcon	20371	1	0	100	0	20050	BlizzCon 2005	Murky	From BlizzCon 2005. A companion that follows you around.		core: Blue Murloc Egg
 302	blizzcon	33079	1	0	100	0	20070	BlizzCon 2007		From BlizzCon 2007. Turns you into a murloc. It stays in your bags.		core: Murloc Costume
 303	blizzcon	43599	1	0	250	1	20080	BlizzCon 2008		From BlizzCon 2008. A mount.		core: Big Blizzard Bear
