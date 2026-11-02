@@ -12,10 +12,10 @@
  * warblups/mod-accountwide), a mount or companion is bought for the ACCOUNT: nothing is mailed,
  * its spell is written to those modules' table (accountwide_mounts / accountwide_pets, which
  * they read at every login) and, once that write is done, every real character of the account
- * in the game learns it.
- * Such an offer is `account` in the listing, no character is `cannot`, and the account owns it
- * as soon as one character knows it. Without the table it is mailed as before, unless it is free
- * and could be sold or traded (CannotUse).
+ * in the game learns it, Self-Found ones (mod-challenges) excepted.
+ * Such an offer is `account` in the listing, only a Self-Found character is `cannot`, and the
+ * account owns it as soon as one character knows it. Without the table it is mailed as before,
+ * unless it is free and could be sold or traded (CannotUse).
  *
  * World table mod_boss_coins_shop_extra lists items that come with an offer (the looks of a
  * retail shop bundle that come with its mount). They are mailed to the character the offer is
@@ -618,15 +618,16 @@ namespace
     }
 
     // An account-wide purchase, once its write is done: the account's real characters in the
-    // game (bots are left to the sharing module, which skips them too) learn the spell and are
-    // told. The others learn it from the table at their next login. Runs on the world thread,
-    // from the order's commit callback.
+    // game learn the spell and are told. Bots and Self-Found characters (mod-challenges) are left
+    // out, as mod-accountwide-mounts and -pets leave them out at their login. Those not in the
+    // game learn it from the table at their next login. Runs on the world thread, from the
+    // order's commit callback.
     void TeachAccount(std::string const& name, uint32 spell, std::vector<uint32> const& guids)
     {
         for (uint32 guid : guids)
         {
             Player* player = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(guid));
-            if (!player || !player->GetSession() || !IsRealPlayer(player))
+            if (!player || !player->GetSession() || !IsRealPlayer(player) || IsSelfFound(guid))
                 continue;
 
             if (!player->HasSpell(spell))

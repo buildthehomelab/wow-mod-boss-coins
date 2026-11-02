@@ -118,9 +118,11 @@ list. On a server that shares mounts and companions between an account's charact
 mod-accountwide) a mount or companion is bought **for the account** instead: nothing is mailed
 and nothing has to be learned from an item; its spell goes into that module's `accountwide_mounts`
 / `accountwide_pets` table, every character of the account in the game learns it on the spot and
-the others learn it when they next log in (that module decides what each can use). The listing
-marks such an offer `account`, nobody is `cannot` for it, and the account owns it as soon as one
-character knows it or it is in the table.
+the others learn it when they next log in (that module decides what each can use). A Self-Found
+character ([mod-challenges](https://github.com/buildthehomelab/wow-mod-challenges)) can't be bought
+for and isn't taught it by the shop; mod-accountwide-mounts and -pets leave it out at its login
+too. The listing marks such an offer `account`, only a Self-Found character is `cannot` for it, and
+the account owns it as soon as one character knows it or it is in the table.
 
 **What comes with an offer.** World table `mod_boss_coins_shop_extra` lists items that come with
 an offer, like the looks of a retail shop bundle that come with its mount: they are mailed to the
@@ -321,7 +323,7 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
 | `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
 | `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |
-| `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters (mod-accountwide-mounts / -pets, mod-accountwide): a mount or companion is bought for the account (written to `accountwide_mounts` / `accountwide_pets`, learned at once in the game, no mail), and one the account has isn't sold again. Without those tables the item is mailed |
+| `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters (mod-accountwide-mounts / -pets, mod-accountwide): a mount or companion is bought for the account (written to `accountwide_mounts` / `accountwide_pets`, learned at once in the game except by a Self-Found character, no mail), and one the account has isn't sold again. Without those tables the item is mailed |
 | `BossCoins.Shop.ProgressionGate` | `1` | `1`: an offer with a `phase` stays locked until a character of the account has reached that progression phase. `0`: everything is for sale to everyone |
 
 All of them reload with `.reload config`.

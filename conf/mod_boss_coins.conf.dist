@@ -90,8 +90,9 @@ BossCoins.Shop.Enable = 1
 #                     nothing is mailed, its spell is written to that module's table
 #                     (accountwide_mounts / accountwide_pets) and every character of the
 #                     account in the game learns it at once; the others learn it when they log
-#                     in. One the account has (one character knows it, or it is in the table)
-#                     isn't sold again. Without the table the item is mailed as with 0.
+#                     in. A Self-Found character (mod-challenges) isn't taught it. One the
+#                     account has (one character knows it, or it is in the table) isn't sold
+#                     again. Without the table the item is mailed as with 0.
 #        Default:     0
 #
 
