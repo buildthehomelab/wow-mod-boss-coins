@@ -244,13 +244,16 @@ belongs to the account:
 - **Collected on pickup.** When a character gets one the account doesn't have (loot, a roll, a
   quest reward, a vendor), the item is gone and the spell is the account's. The character learns
   it at once if it can use the item; the others learn it at their next login. A level 20 alt can
-  loot a level 60 mount for its main.
+  loot a level 60 mount for its main. A Self-Found character, which the sharing modules leave out
+  at login, learns what it finds at once whatever its level or skill, also when the account has
+  it, unless it could never use it. The item goes the same way: its second copy is the spare.
 - **Right-click** collects one the same way, whatever the item asks of the character: one taken
   out of the mail, or one from before this.
 - **Achievements give it once per account.** The core's reward mail loses the item; the first
   character of the account to earn the achievement collects it, later ones get nothing (titles
-  still come). Characters table `mod_boss_coins_collection_achievement` remembers it, and
-  deleting characters doesn't reset it: a fresh alt can't earn the achievement again for a spare.
+  still come) but a Self-Found one, which learns the spell. Characters table
+  `mod_boss_coins_collection_achievement` remembers it, and deleting characters doesn't reset it:
+  a fresh alt can't earn the achievement again for a spare.
 - **Spare drops are worth coins.** Right-click a mount or companion the account has already and
   a box offers to trade it for Tarnished Undermine Reals, into the wallet (a Self-Found
   character's into its bags): 2 for a common or
