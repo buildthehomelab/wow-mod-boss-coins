@@ -118,9 +118,11 @@ list. On a server that shares mounts and companions between an account's charact
 mod-accountwide) a mount or companion is bought **for the account** instead: nothing is mailed
 and nothing has to be learned from an item; its spell goes into that module's `accountwide_mounts`
 / `accountwide_pets` table, every character of the account in the game learns it on the spot and
-the others learn it when they next log in (that module decides what each can use). The listing
-marks such an offer `account`, nobody is `cannot` for it, and the account owns it as soon as one
-character knows it or it is in the table.
+the others learn it when they next log in (that module decides what each can use). A Self-Found
+character ([mod-challenges](https://github.com/buildthehomelab/wow-mod-challenges)) can't be bought
+for and isn't taught it by the shop; mod-accountwide-mounts and -pets leave it out at its login
+too. The listing marks such an offer `account`, only a Self-Found character is `cannot` for it, and
+the account owns it as soon as one character knows it or it is in the table.
 
 **What comes with an offer.** World table `mod_boss_coins_shop_extra` lists items that come with
 an offer, like the looks of a retail shop bundle that come with its mount: they are mailed to the
@@ -242,13 +244,16 @@ belongs to the account:
 - **Collected on pickup.** When a character gets one the account doesn't have (loot, a roll, a
   quest reward, a vendor), the item is gone and the spell is the account's. The character learns
   it at once if it can use the item; the others learn it at their next login. A level 20 alt can
-  loot a level 60 mount for its main.
+  loot a level 60 mount for its main. A Self-Found character, which the sharing modules leave out
+  at login, learns what it finds at once whatever its level or skill, also when the account has
+  it, unless it could never use it. The item goes the same way: its second copy is the spare.
 - **Right-click** collects one the same way, whatever the item asks of the character: one taken
   out of the mail, or one from before this.
 - **Achievements give it once per account.** The core's reward mail loses the item; the first
   character of the account to earn the achievement collects it, later ones get nothing (titles
-  still come). Characters table `mod_boss_coins_collection_achievement` remembers it, and
-  deleting characters doesn't reset it: a fresh alt can't earn the achievement again for a spare.
+  still come) but a Self-Found one, which learns the spell. Characters table
+  `mod_boss_coins_collection_achievement` remembers it, and deleting characters doesn't reset it:
+  a fresh alt can't earn the achievement again for a spare.
 - **Spare drops are worth coins.** Right-click a mount or companion the account has already and
   a box offers to trade it for Tarnished Undermine Reals, into the wallet (a Self-Found
   character's into its bags): 2 for a common or
@@ -321,7 +326,7 @@ Give players the new patch in place of the old one. Needs Python 3 and
 | `BossCoins.DailyLogin.Coins` | `2` | Coins an account gets once a day for logging in. `0` switches it off |
 | `BossCoins.DailyLogin.ToWallet` | `1` | `1`: the daily coins go into the account wallet. `0`: into the bags |
 | `BossCoins.Shop.Enable` | `1` | With `0` the `.coinshop` commands answer that the shop is closed. The wallet stays |
-| `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters (mod-accountwide-mounts / -pets, mod-accountwide): a mount or companion is bought for the account (written to `accountwide_mounts` / `accountwide_pets`, learned at once in the game, no mail), and one the account has isn't sold again. Without those tables the item is mailed |
+| `BossCoins.Shop.AccountWideSpells` | `0` | `1` if your server shares mounts and companions between an account's characters (mod-accountwide-mounts / -pets, mod-accountwide): a mount or companion is bought for the account (written to `accountwide_mounts` / `accountwide_pets`, learned at once in the game except by a Self-Found character, no mail), and one the account has isn't sold again. Without those tables the item is mailed |
 | `BossCoins.Shop.ProgressionGate` | `1` | `1`: an offer with a `phase` stays locked until a character of the account has reached that progression phase. `0`: everything is for sale to everyone |
 
 All of them reload with `.reload config`.
