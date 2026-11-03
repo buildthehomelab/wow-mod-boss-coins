@@ -256,7 +256,7 @@ namespace
     {
         std::vector<Character> characters;
         if (QueryResult result = CharacterDatabase.Query("SELECT guid, name, race, class, gender, level, at_login FROM characters "
-            "WHERE account = {} ORDER BY guid", account))
+            "WHERE account = {} AND " SQL_NOT_HOME_VIEWER " ORDER BY guid", account))
         {
             do
             {

@@ -71,7 +71,7 @@ using namespace BossCoins;
 bool BossCoins::IsRealPlayer(Player* player)
 {
     WorldSession* session = player ? player->GetSession() : nullptr;
-    return session && !IsBotSession(session);
+    return session && !IsBotSession(session) && !IsHomeViewer(player);
 }
 
 uint8 BossCoins::AccountKindOf(uint32 spellId)
