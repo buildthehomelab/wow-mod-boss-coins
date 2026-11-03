@@ -22,6 +22,14 @@
 
 class Player;
 
+// A core with home screens keeps a character row per account that nobody plays. Other cores have none.
+#if __has_include("HomeViewer.h")
+#include "HomeViewer.h"
+#else
+#define SQL_NOT_HOME_VIEWER "1"
+inline bool IsHomeViewer(Player const*) { return false; }
+#endif
+
 namespace BossCoins
 {
     constexpr uint32 ITEM_TARNISHED_UNDERMINE_REAL = 90410;
@@ -53,7 +61,7 @@ namespace BossCoins
             return false;
     }
 
-    // A player with a client: not a bot.
+    // A player with a client: not a bot, and not a home screen viewer.
     bool IsRealPlayer(Player* player);
 
     char const* CoinName(uint32 count);
